@@ -3,7 +3,7 @@
 
 // ─── Tab Types ───────────────────────────────────────────────────────────────
 
-export type ActiveTab = "excavation" | "droptube" | "concrete" | "construction" | "dailyreport" | "prebury";
+export type ActiveTab = "excavation" | "droptube" | "concrete" | "construction" | "dailyreport" | "prebury" | "blueprints";
 export type ExcInputMode = "decimal" | "fractions";
 export type ValveType = "standard" | "testable" | "custom";
 export type ConcreteShape =
@@ -326,3 +326,75 @@ export const PREBURY_PRECHECK_ITEMS: PreBuryPrecheckItem[] = [
   { id: "pc_7", text: "Brief crew on inspection protocol (no work in pit during inspection)" },
   { id: "pc_8", text: "Photograph all installed systems for project record" },
 ];
+
+// ─── Blueprint & Scope of Work Types & Constants ────────────────────────────
+
+export type SowDivisionId =
+  | "div_01_general"
+  | "div_02_demolition"
+  | "div_33_tanks"
+  | "div_33_piping"
+  | "div_26_electrical"
+  | "div_33_testing"
+  | "div_32_surface";
+
+export interface SowDivisionDef {
+  id: SowDivisionId;
+  code: string;
+  name: string;
+  badgeColor: string;
+  icon: string;
+}
+
+export const SOW_DIVISIONS: SowDivisionDef[] = [
+  {
+    id: "div_01_general",
+    code: "DIV 01",
+    name: "General Conditions & Safety",
+    badgeColor: "cyan",
+    icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+  },
+  {
+    id: "div_02_demolition",
+    code: "DIV 02",
+    name: "Demolition & Tank Pit Excavation",
+    badgeColor: "amber",
+    icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10",
+  },
+  {
+    id: "div_33_tanks",
+    code: "DIV 33.1",
+    name: "Tanks, Anchoring & Deadmen",
+    badgeColor: "emerald",
+    icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
+  },
+  {
+    id: "div_33_piping",
+    code: "DIV 33.2",
+    name: "Product Piping & Containment Sumps",
+    badgeColor: "indigo",
+    icon: "M13 10V3L4 14h7v7l9-11h-7z",
+  },
+  {
+    id: "div_26_electrical",
+    code: "DIV 26",
+    name: "Electrical, ATG & Controls",
+    badgeColor: "yellow",
+    icon: "M13 10V3L4 14h7v7l9-11h-7z",
+  },
+  {
+    id: "div_33_testing",
+    code: "DIV 33.3",
+    name: "Testing, Air Hold & Pre-Bury Quality",
+    badgeColor: "teal",
+    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+  },
+  {
+    id: "div_32_surface",
+    code: "DIV 32",
+    name: "Backfill, Concrete Pad & Paving",
+    badgeColor: "rose",
+    icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m3 0h10",
+  },
+];
+

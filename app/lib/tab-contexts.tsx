@@ -19,6 +19,11 @@ import {
   PreBuryPhoto,
   PreBurySignOff,
   DEFAULT_PREBURY_SIGNOFF,
+  BlueprintState,
+  DEFAULT_BLUEPRINT_STATE,
+  BlueprintSheet,
+  ScopeItem,
+  SowItemStatus,
 } from "./tab-types";
 import {
   PREBURY_CHECKLIST_GROUPS,
@@ -859,6 +864,177 @@ export function usePreBury() {
   return ctx;
 }
 
+// ─── 7. BLUEPRINTS & SCOPE OF WORK CONTEXT ──────────────────────────────────
+
+interface BlueprintContextType {
+  state: BlueprintState;
+  updateState: (updates: Partial<BlueprintState>) => void;
+  resetState: () => void;
+  addSheet: (sheet: BlueprintSheet) => void;
+  deleteSheet: (id: string) => void;
+  setActiveSheetId: (id: string | null) => void;
+  setSowItemStatus: (id: string, status: SowItemStatus) => void;
+  toggleSowItemStatus: (id: string) => void;
+  updateSowItem: (id: string, updates: Partial<ScopeItem>) => void;
+  addSowItem: (item: Omit<ScopeItem, "id">) => void;
+  deleteSowItem: (id: string) => void;
+  loadSowPreset: (presetItems: ScopeItem[], facilityType: string) => void;
+  sowTotalItems: number;
+  sowCompletedItems: number;
+  sowTotalEstimatedHours: number;
+}
+
+const BlueprintContext = createContext<BlueprintContextType | null>(null);
+
+export function BlueprintProvider({ children, jobId = "default-job" }: { children: React.ReactNode; jobId?: string }) {
+  const [state, setState] = usePersistedState<BlueprintState>(
+    getJobStorageKey("blueprints", jobId),
+    DEFAULT_BLUEPRINT_STATE
+  );
+
+  const updateState = useCallback((updates: Partial<BlueprintState>) => {
+    setState((prev) => ({ ...prev, ...updates }));
+  }, [setState]);
+
+  const resetState = useCallback(() => {
+    setState(DEFAULT_BLUEPRINT_STATE);
+  }, [setState]);
+
+  const addSheet = useCallback((sheet: BlueprintSheet) => {
+    setState((prev) => ({
+      ...prev,
+      sheets: [...(prev.sheets || []), sheet],
+      activeSheetId: prev.activeSheetId || sheet.id,
+    }));
+  }, [setState]);
+
+  const deleteSheet = useCallback((id: string) => {
+    setState((prev) => {
+      const remaining = (prev.sheets || []).filter((s) => s.id !== id);
+      return {
+        ...prev,
+        sheets: remaining,
+        activeSheetId: prev.activeSheetId === id ? (remaining[0]?.id || null) : prev.activeSheetId,
+      };
+    });
+  }, [setState]);
+
+  const setActiveSheetId = useCallback((id: string | null) => {
+    setState((prev) => ({ ...prev, activeSheetId: id }));
+  }, [setState]);
+
+  const setSowItemStatus = useCallback((id: string, status: SowItemStatus) => {
+    setState((prev) => ({
+      ...prev,
+      sowItems: (prev.sowItems || []).map((item) => (item.id === id ? { ...item, status } : item)),
+    }));
+  }, [setState]);
+
+  const toggleSowItemStatus = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      sowItems: (prev.sowItems || []).map((item) => {
+        if (item.id !== id) return item;
+        const nextStatus: SowItemStatus =
+          item.status === "completed"
+            ? "not_started"
+            : item.status === "in_progress"
+            ? "completed"
+            : "in_progress";
+        return { ...item, status: nextStatus };
+      }),
+    }));
+  }, [setState]);
+
+  const updateSowItem = useCallback((id: string, updates: Partial<ScopeItem>) => {
+    setState((prev) => ({
+      ...prev,
+      sowItems: (prev.sowItems || []).map((item) => (item.id === id ? { ...item, ...updates } : item)),
+    }));
+  }, [setState]);
+
+  const addSowItem = useCallback((item: Omit<ScopeItem, "id">) => {
+    const newItem: ScopeItem = {
+      ...item,
+      id: `sow-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    };
+    setState((prev) => ({
+      ...prev,
+      sowItems: [...(prev.sowItems || []), newItem],
+    }));
+  }, [setState]);
+
+  const deleteSowItem = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      sowItems: (prev.sowItems || []).filter((item) => item.id !== id),
+    }));
+  }, [setState]);
+
+  const loadSowPreset = useCallback((presetItems: ScopeItem[], facilityType: string) => {
+    setState((prev) => ({
+      ...prev,
+      facilityType,
+      sowItems: presetItems,
+    }));
+  }, [setState]);
+
+  const sowTotalItems = useMemo(() => (state.sowItems || []).length, [state.sowItems]);
+  const sowCompletedItems = useMemo(
+    () => (state.sowItems || []).filter((item) => item.status === "completed").length,
+    [state.sowItems]
+  );
+  const sowTotalEstimatedHours = useMemo(
+    () => (state.sowItems || []).reduce((sum, item) => sum + (item.estimatedHours || 0), 0),
+    [state.sowItems]
+  );
+
+  const value = useMemo(
+    () => ({
+      state,
+      updateState,
+      resetState,
+      addSheet,
+      deleteSheet,
+      setActiveSheetId,
+      setSowItemStatus,
+      toggleSowItemStatus,
+      updateSowItem,
+      addSowItem,
+      deleteSowItem,
+      loadSowPreset,
+      sowTotalItems,
+      sowCompletedItems,
+      sowTotalEstimatedHours,
+    }),
+    [
+      state,
+      updateState,
+      resetState,
+      addSheet,
+      deleteSheet,
+      setActiveSheetId,
+      setSowItemStatus,
+      toggleSowItemStatus,
+      updateSowItem,
+      addSowItem,
+      deleteSowItem,
+      loadSowPreset,
+      sowTotalItems,
+      sowCompletedItems,
+      sowTotalEstimatedHours,
+    ]
+  );
+
+  return <BlueprintContext.Provider value={value}>{children}</BlueprintContext.Provider>;
+}
+
+export function useBlueprints() {
+  const ctx = useContext(BlueprintContext);
+  if (!ctx) throw new Error("useBlueprints must be used within BlueprintProvider");
+  return ctx;
+}
+
 // ─── ROOT APP PROVIDER COMBINER ─────────────────────────────────────────────
 
 export function AppStateProviders({
@@ -876,7 +1052,9 @@ export function AppStateProviders({
             <ConstructionProvider key={`${activeJobId}-cst`} jobId={activeJobId}>
               <DailyReportProvider key={`${activeJobId}-dr`} jobId={activeJobId}>
                 <PreBuryProvider key={`${activeJobId}-pb`} jobId={activeJobId}>
-                  {children}
+                  <BlueprintProvider key={`${activeJobId}-bp`} jobId={activeJobId}>
+                    {children}
+                  </BlueprintProvider>
                 </PreBuryProvider>
               </DailyReportProvider>
             </ConstructionProvider>
@@ -886,3 +1064,4 @@ export function AppStateProviders({
     </ActiveJobContext.Provider>
   );
 }
+

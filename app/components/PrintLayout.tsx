@@ -4,7 +4,7 @@
 import React, { memo } from "react";
 import { formatFeetInches } from "../lib/calculations";
 import type { ActiveTab } from "../lib/constants";
-import { useExcavation, useConcrete, usePreBury } from "../lib/tab-contexts";
+import { useExcavation, useConcrete, usePreBury, useBlueprints } from "../lib/tab-contexts";
 
 interface PrintLayoutProps {
   activeTab: ActiveTab;
@@ -21,6 +21,7 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
   const { cy: gravelCy, tons: gravelTons } = gravelResults;
 
   const preBury = usePreBury();
+  const blueprints = useBlueprints();
 
   return (
     <div className="print-only p-8 text-black bg-white space-y-6">
@@ -209,6 +210,50 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === "blueprints" && (
+        <div className="space-y-4 text-xs font-sans">
+          <div className="border-b border-black pb-2 flex justify-between items-center">
+            <h2 className="text-sm font-bold uppercase">
+              UST Scope of Work (SOW) — {blueprints.state.facilityType}
+            </h2>
+            <span className="font-mono">
+              Status: {blueprints.sowCompletedItems}/{blueprints.sowTotalItems} Tasks Completed ({blueprints.sowTotalEstimatedHours} hrs)
+            </span>
+          </div>
+
+          <table className="w-full text-left border border-gray-300">
+            <thead>
+              <tr className="bg-gray-100 border-b border-gray-300 font-bold">
+                <th className="p-2">Status</th>
+                <th className="p-2">Code</th>
+                <th className="p-2">Task Title &amp; Specification</th>
+                <th className="p-2">Qty</th>
+                <th className="p-2">Est. Hrs</th>
+                <th className="p-2">Contractor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {blueprints.state.sowItems.map((item) => (
+                <tr key={item.id} className="border-b border-gray-200">
+                  <td className="p-2 font-mono font-bold">
+                    {item.status === "completed" ? "[X] Done" : item.status === "in_progress" ? "[~] In Prog" : "[ ] Pending"}
+                  </td>
+                  <td className="p-2 font-mono font-bold">{item.code}</td>
+                  <td className="p-2">
+                    <p className="font-bold">{item.title}</p>
+                    <p className="text-[10px] text-gray-600">{item.description}</p>
+                    {item.specRef && <p className="text-[9px] text-gray-500 font-mono">Ref: {item.specRef}</p>}
+                  </td>
+                  <td className="p-2">{item.quantity || "1"} {item.unit || ""}</td>
+                  <td className="p-2 font-mono">{item.estimatedHours || 0}</td>
+                  <td className="p-2">{item.assignedContractor || "Site Crew"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

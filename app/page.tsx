@@ -14,6 +14,8 @@ import ConcreteTab from "./components/ConcreteTab";
 import ConstructionTab from "./components/ConstructionTab";
 import DailyReportTab from "./components/DailyReportTab";
 import PreBuryTab from "./components/PreBuryTab";
+import BlueprintTab from "./components/BlueprintTab";
+import AIAssistant from "./components/AIAssistant";
 import JobManager from "./components/JobManager";
 import BackupSyncModal from "./components/BackupSyncModal";
 
@@ -27,6 +29,7 @@ import {
   useConstruction,
   useDailyReport,
   usePreBury,
+  useBlueprints,
   P as P_V2,
 } from "./lib/tab-contexts";
 
@@ -50,6 +53,8 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
   const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
+  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
+  const [aiAssistantPrompt, setAiAssistantPrompt] = useState<string | undefined>(undefined);
 
   const excavation = useExcavation();
   const dropTube = useDropTube();
@@ -57,6 +62,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
   const construction = useConstruction();
   const dailyReport = useDailyReport();
   const preBury = usePreBury();
+  const blueprints = useBlueprints();
 
   const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -223,6 +229,19 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
         `CHECKLISTS: ${checksCompleted}/${checksTotal} Signed Off\n` +
         `DOCS PACKAGE: ${docsCompleted}/${docsTotal} Uploaded\n` +
         `OPEN ITEMS: ${openItemsCount} need action\n`;
+    } else if (activeTab === "blueprints") {
+      const { state, sowCompletedItems, sowTotalItems, sowTotalEstimatedHours } = blueprints;
+      text =
+        `--- UST Blueprints & Scope of Work (SOW) Cut Sheet ---\n` +
+        `Facility: ${state.facilityType}\n` +
+        `Plan Sheets: ${state.sheets.length} uploaded\n` +
+        `Progress: ${sowCompletedItems}/${sowTotalItems} Completed (${Math.round((sowCompletedItems / (sowTotalItems || 1)) * 100)}%)\n` +
+        `Total Estimated Work: ${sowTotalEstimatedHours} man-hours\n` +
+        `--------------------------------------------------\n` +
+        state.sowItems
+          .map((i) => `  [${i.status === "completed" ? "X" : i.status === "in_progress" ? "IP" : " "}] [${i.code}] ${i.title} (${i.estimatedHours || 0} hrs) — ${i.assignedContractor || "Site Crew"}`)
+          .join("\n") +
+        "\n";
     }
 
     navigator.clipboard
@@ -233,7 +252,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
       .catch(() => {
         triggerToast("Copy failed. Please copy manually.");
       });
-  }, [activeTab, excavation, dropTube, concrete, dailyReport, preBury, triggerToast]);
+  }, [activeTab, excavation, dropTube, concrete, dailyReport, preBury, blueprints, triggerToast]);
 
   const handlePrint = useCallback(() => {
     window.print();
@@ -246,9 +265,10 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     else if (activeTab === "construction") construction.resetState();
     else if (activeTab === "dailyreport") dailyReport.resetState();
     else if (activeTab === "prebury") preBury.resetState();
+    else if (activeTab === "blueprints") blueprints.resetState();
 
     triggerToast("Reset tab inputs to job defaults");
-  }, [activeTab, excavation, dropTube, concrete, construction, dailyReport, preBury, triggerToast]);
+  }, [activeTab, excavation, dropTube, concrete, construction, dailyReport, preBury, blueprints, triggerToast]);
 
   // Register PWA Service Worker
   useEffect(() => {
@@ -306,6 +326,18 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
             />
 
             <button
+              onClick={() => {
+                setAiAssistantPrompt(undefined);
+                setShowAiAssistant(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-950 via-cyan-950 to-indigo-950 hover:from-indigo-900 hover:to-cyan-900 border border-cyan-500/40 text-cyan-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-cyan-500/10 animate-pulse"
+              title="Open UST Field AI Copilot"
+            >
+              <span>🤖</span>
+              <span>AI Copilot</span>
+            </button>
+
+            <button
               onClick={() => setShowBackupModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/30 text-indigo-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-indigo-500/10"
               title="Backup, export, or restore job sites and calculations"
@@ -350,7 +382,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
         </header>
 
         {/* Navigation Tabs Bar */}
-        <nav className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 shadow-inner">
+        <nav className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 shadow-inner">
           {[
             { id: "excavation" as const, label: "Excavation & Laser", subtitle: "Pit Shots (+15.5')", color: "cyan", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
             { id: "droptube" as const, label: "OPW Drop Tube Cut", subtitle: "OPW 71SO Valve", color: "emerald", icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
@@ -358,6 +390,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
             { id: "construction" as const, label: "Construction Math", subtitle: "Triangles & Volumes", color: "indigo", icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
             { id: "dailyreport" as const, label: "Daily Job Report", subtitle: "Crew, Weather, Safety", color: "rose", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
             { id: "prebury" as const, label: "Pre-Bury Inspector", subtitle: "Air Tests, Checks, Docs", color: "teal", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { id: "blueprints" as const, label: "Blueprints & Scope", subtitle: "Plans & SOW Engine", color: "violet", icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -390,6 +423,35 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
         {activeTab === "construction" && <ConstructionTab />}
         {activeTab === "dailyreport" && <DailyReportTab triggerToast={triggerToast} />}
         {activeTab === "prebury" && <PreBuryTab triggerToast={triggerToast} />}
+        {activeTab === "blueprints" && (
+          <BlueprintTab
+            triggerToast={triggerToast}
+            onOpenAiAssistant={(prompt) => {
+              setAiAssistantPrompt(prompt);
+              setShowAiAssistant(true);
+            }}
+          />
+        )}
+
+        {/* Floating AI Copilot Trigger Button */}
+        <button
+          onClick={() => {
+            setAiAssistantPrompt(undefined);
+            setShowAiAssistant(true);
+          }}
+          className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 via-cyan-500 to-indigo-600 hover:from-indigo-500 hover:to-cyan-400 text-slate-950 font-black px-4 py-3 rounded-full shadow-2xl shadow-cyan-500/40 flex items-center gap-2 border border-cyan-300 cursor-pointer transition-all transform hover:scale-105"
+        >
+          <span className="text-base">🤖</span>
+          <span className="text-xs uppercase tracking-wider">AI Copilot</span>
+        </button>
+
+        {/* AI Assistant Drawer */}
+        <AIAssistant
+          isOpen={showAiAssistant}
+          onClose={() => setShowAiAssistant(false)}
+          initialPrompt={aiAssistantPrompt}
+          triggerToast={triggerToast}
+        />
 
         {/* --- PRINT ONLY PDF SUBMITTAL CUT SHEET LAYOUT --- */}
         <PrintLayout activeTab={activeTab} />

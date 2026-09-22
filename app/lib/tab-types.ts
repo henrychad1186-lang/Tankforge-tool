@@ -12,6 +12,7 @@ import {
   DailyMaterialEntry,
   AirTestRecord,
   PreBuryDocStatus,
+  SowDivisionId,
 } from "./constants";
 
 // ─── Grouped Tab States ──────────────────────────────────────────────────────
@@ -416,3 +417,213 @@ export const DEFAULT_PREBURY_STATE: PreBuryState = {
   photos: [],
   signOff: DEFAULT_PREBURY_SIGNOFF,
 };
+
+// ─── 7. BLUEPRINTS & SCOPE OF WORK STATE ────────────────────────────────────
+
+export type SowItemStatus = "not_started" | "in_progress" | "completed";
+
+export interface ScopeItem {
+  id: string;
+  divisionId: SowDivisionId;
+  code: string;
+  title: string;
+  specRef?: string;
+  description: string;
+  quantity?: string;
+  unit?: string;
+  estimatedHours?: number;
+  assignedContractor?: string;
+  status: SowItemStatus;
+  notes?: string;
+}
+
+export interface BlueprintSheet {
+  id: string;
+  sheetNumber: string;
+  name: string;
+  fileType: "image" | "pdf";
+  fileName: string;
+  fileSizeBytes: number;
+  uploadedAt: string;
+  storageKey: string;
+  thumbnailUrl?: string;
+  notes?: string;
+}
+
+export type BlueprintSubTab = "viewer" | "sow" | "specs";
+
+export interface BlueprintState {
+  activeSubTab: BlueprintSubTab;
+  sheets: BlueprintSheet[];
+  activeSheetId: string | null;
+  facilityType: string;
+  sowItems: ScopeItem[];
+  geminiApiKey: string;
+  lastAiAnalysis?: string;
+}
+
+export const DEFAULT_SOW_ITEMS: ScopeItem[] = [
+  // DIV 01: General Conditions & Safety
+  {
+    id: "sow-1",
+    divisionId: "div_01_general",
+    code: "01 10 00",
+    title: "Utility Locate & 811 Ticket Verification",
+    specRef: "OSHA 1926.651(a)",
+    description: "Submit 811 Call-Before-You-Dig ticket 72h prior. Mark out high-voltage electric, water, sewer, and gas mains. Hand dig or vacuum excavate within 24\" tolerance zone.",
+    quantity: "1",
+    unit: "Site",
+    estimatedHours: 8,
+    assignedContractor: "General Contractor / Survey",
+    status: "completed",
+    notes: "Ticket #FL-811-99201 cleared. Water main flagged 14ft west of pit.",
+  },
+  {
+    id: "sow-2",
+    divisionId: "div_01_general",
+    code: "01 50 00",
+    title: "MOT, Barricades & Excavation Safety Perimeter",
+    specRef: "OSHA 1926 Subpart P",
+    description: "Install Class II high-visibility perimeter fencing around fuel island and tank pit. Post Confined Space Warning signs and ensure fire extinguisher (20# BC) within 50ft.",
+    quantity: "350",
+    unit: "LF",
+    estimatedHours: 6,
+    assignedContractor: "Site Crew",
+    status: "completed",
+  },
+  // DIV 02: Demolition & Pit Excavation
+  {
+    id: "sow-3",
+    divisionId: "div_02_demolition",
+    code: "02 41 16",
+    title: "Slab Sawcutting & Concrete / Asphalt Demolition",
+    specRef: "PEI RP100 §4",
+    description: "Sawcut existing 6\" concrete slab/asphalt over tank grave and pipe trenches. Break, haul, and recycle off-site.",
+    quantity: "2,400",
+    unit: "SF",
+    estimatedHours: 16,
+    assignedContractor: "Demolition Sub",
+    status: "completed",
+  },
+  {
+    id: "sow-4",
+    divisionId: "div_02_demolition",
+    code: "02 30 00",
+    title: "Tank Pit Excavation & Laser Benchmark Setting",
+    specRef: "PEI RP100 §4.2",
+    description: "Excavate raw tank pit to Finish Grade (FG) + 15.5' laser benchmark constant. Maintain trench box shoring or 1.5:1 soil slope. Install 12\" compacted rounded pea gravel bedding (FG + 14.5').",
+    quantity: "420",
+    unit: "CY",
+    estimatedHours: 24,
+    assignedContractor: "Excavation Operator",
+    status: "in_progress",
+    notes: "Transit benchmark set at raw hole = 20.00' (Shot 4.50' + 15.5' constant).",
+  },
+  // DIV 33.1: Tanks & Anchoring
+  {
+    id: "sow-5",
+    divisionId: "div_33_tanks",
+    code: "33 56 13",
+    title: "Pre-Cast Concrete Deadman Anchors Installation",
+    specRef: "PEI RP100 §5.3",
+    description: "Place 2x reinforced concrete deadman beams per tank (minimum 150 lbs/cf dry density). Connect 3/4\" drop-forged turnbuckles to anchor loops with cotter pins.",
+    quantity: "4",
+    unit: "Beams",
+    estimatedHours: 12,
+    assignedContractor: "UST Rigging Crew",
+    status: "not_started",
+    notes: "Buoyancy safety factor verified >= 1.20x.",
+  },
+  {
+    id: "sow-6",
+    divisionId: "div_33_tanks",
+    code: "33 56 13",
+    title: "Tank Hoisting, Setting & Hold-Down Strapping",
+    specRef: "PEI RP100 §5 & §6",
+    description: "Rig and set double-wall fiberglass/steel USTs using certified lifting lugs and spreader bars. Secure non-conductive dielectric hold-down straps (min 5,200 lbs WLL) and torque turnbuckles evenly.",
+    quantity: "2",
+    unit: "Tanks",
+    estimatedHours: 16,
+    assignedContractor: "Certified UST Installer",
+    status: "not_started",
+  },
+  // DIV 33.2: Piping & Containment
+  {
+    id: "sow-7",
+    divisionId: "div_33_piping",
+    code: "33 52 00",
+    title: "Double-Wall Containment Sumps & Entry Boots",
+    specRef: "PEI RP100 §7",
+    description: "Mount fiberglass tank-top sumps and dispenser transition sumps. Cut penetrations with hole saw and install flexible containment penetration boots.",
+    quantity: "6",
+    unit: "Sumps",
+    estimatedHours: 14,
+    assignedContractor: "Piping Tech",
+    status: "not_started",
+  },
+  {
+    id: "sow-8",
+    divisionId: "div_33_piping",
+    code: "33 52 16",
+    title: "Product & Vent Piping Installation with Slope",
+    specRef: "PEI RP100 §8",
+    description: "Install double-wall flex/fiberglass fuel piping in trenches (FG + 3.0'). Pitch vent lines at 1/8\" per foot continuous fall back to tank. No low-point traps.",
+    quantity: "320",
+    unit: "LF",
+    estimatedHours: 20,
+    assignedContractor: "Certified Pipefitter",
+    status: "not_started",
+  },
+  // DIV 26: Electrical & Controls
+  {
+    id: "sow-9",
+    divisionId: "div_26_electrical",
+    code: "26 05 00",
+    title: "Intrinsically Safe Conduit & ATG Tank Probes",
+    specRef: "NFPA 70 Art 500/514",
+    description: "Run rigid steel conduit with seal-offs within 18\" of sumps. Pull intrinsically safe shielded wiring to Automatic Tank Gauge console (Veeder-Root TLS-450PLUS).",
+    quantity: "1",
+    unit: "System",
+    estimatedHours: 16,
+    assignedContractor: "Master Electrician",
+    status: "not_started",
+  },
+  // DIV 33.3: Testing & Quality
+  {
+    id: "sow-10",
+    divisionId: "div_33_testing",
+    code: "33 08 00",
+    title: "5.0 psig 60-Minute Air Test & Soap Solution Check",
+    specRef: "PEI RP100 §6.3",
+    description: "Pressurize tank interstitial space and primary vessel to 5.0 psig (+/- 0.25). Hold for minimum 60 minutes with zero pressure drop. Soap test all bungs, seams, and fittings.",
+    quantity: "2",
+    unit: "Tests",
+    estimatedHours: 8,
+    assignedContractor: "Third-Party Inspector",
+    status: "not_started",
+  },
+  // DIV 32: Surface & Paving
+  {
+    id: "sow-11",
+    divisionId: "div_32_surface",
+    code: "32 13 13",
+    title: "Tank Pad Concrete Placement (#4 Rebar Grid, 8\" Slab)",
+    specRef: "ACI 301 / PEI RP100 §10",
+    description: "Pour 8\" thick 4,000 PSI high early-strength concrete slab with #4 rebar on 12\" centers. Set traffic-rated spill bucket & interstitial manhole ring/covers flush with Finish Grade.",
+    quantity: "48",
+    unit: "CY",
+    estimatedHours: 18,
+    assignedContractor: "Concrete Contractor",
+    status: "not_started",
+  },
+];
+
+export const DEFAULT_BLUEPRINT_STATE: BlueprintState = {
+  activeSubTab: "viewer",
+  sheets: [],
+  activeSheetId: null,
+  facilityType: "Commercial Fueling Facility (Retail C-Store)",
+  sowItems: DEFAULT_SOW_ITEMS,
+  geminiApiKey: "",
+};
+
