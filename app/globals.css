@@ -13,11 +13,17 @@
   
   --animate-fade-in: fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-glow: pulse-glow 3s ease-in-out infinite;
+  --animate-slide-left: slide-left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-left {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes pulse-glow {
@@ -77,4 +83,49 @@ body {
   .print-only {
     display: none;
   }
+}
+
+/* ─── Outdoor Sunlight High-Contrast Mode ───────────────────────────────── */
+/* In harsh outdoor jobsite glare, standard subtle dark UI can wash out.     */
+/* Sunlight mode boosts contrast, solidifies borders, and enhances legibility */
+.sunlight-mode {
+  --background: #000000 !important;
+  --foreground: #ffffff !important;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.sunlight-mode main {
+  background-color: #000000 !important;
+}
+
+.sunlight-mode .bg-slate-950,
+.sunlight-mode .bg-slate-900,
+.sunlight-mode .bg-slate-900\/50,
+.sunlight-mode .bg-slate-900\/80,
+.sunlight-mode .bg-slate-900\/90,
+.sunlight-mode .bg-slate-950\/60,
+.sunlight-mode .bg-slate-950\/80,
+.sunlight-mode .bg-slate-950\/90 {
+  background-color: #050505 !important;
+  border-color: #fbbf24 !important;
+}
+
+.sunlight-mode .text-slate-400,
+.sunlight-mode .text-slate-500 {
+  color: #e2e8f0 !important;
+}
+
+.sunlight-mode .border-slate-800,
+.sunlight-mode .border-slate-700 {
+  border-color: #475569 !important;
+}
+
+.sunlight-mode input,
+.sunlight-mode select,
+.sunlight-mode textarea {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #fbbf24 !important;
+  font-weight: 700 !important;
 }

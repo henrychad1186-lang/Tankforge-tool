@@ -48,3 +48,25 @@
 - **PEI RP100 §5 Buoyancy:** Full upward/downward force balances, safety factor threshold (≥ 1.20×), strap WLL checks, and quick presets.
 - **Touch Signature Pad:** HTML5 smooth canvas signature capture for certified inspector pre-bury sign-off, undo/clear actions, rendered directly in print/PDF.
 - **Reporting:** "Copy Cut Sheet" to clipboard and printable submittal PDF via `PrintLayout.tsx`.
+
+## Field OS & UI Enhancements
+- **OS Status Bar & Dock (`OSStatusBar.tsx`):**
+  - Real-time Field Clock with local timezone and UTC toggle.
+  - Live network connectivity monitor (online/offline PWA status and network type).
+  - Storage telemetry meter tracking IndexedDB and localStorage usage against system quota.
+  - Device battery telemetry gauge with charging state.
+  - Tactile audio feedback toggle using offline Web Audio synth.
+- **OS Command Palette (`CommandPalette.tsx`):**
+  - Global `Ctrl+K` / `⌘K` launcher with instant fuzzy filter.
+  - Rapid navigation across all 7 tabs, tank presets (Xerxes, Containment Solutions, Highland Tank), AI prompts, and job sites.
+- **Dual Split-Screen Workspace Mode:**
+  - `Ctrl+\` or Split button allows viewing two tabs side-by-side (e.g. Plan Blueprints on Left, Excavation/SOW/AI on Right).
+- **Field OS Tools Drawer (`FieldToolsDrawer.tsx`):**
+  - Rapid 2-way Field Unit Converter (PSIG/inHg/bar/kPa, inches/surveyor feet, cu yds/gallons/bags, tons/lbs).
+  - Dedicated 60-min Tank Air Test, 15-min Piping Test, and 5-min Slump Hold Timer with visual progress and audible buzzer.
+  - Persistent Field Scratchpad with one-click append into the Daily Job Report notes.
+- **Outdoor Sunlight High-Contrast Mode:**
+  - High-visibility outdoor theme (`.sunlight-mode`) designed for harsh direct sun on jobsite Toughbooks/iPads.
+- **Tactile Audio Synthesizer (`soundEffects.ts`):**
+  - Pure Web Audio API synthesized clicks, melodic success chimes, warning tones, and completion alarms (100% offline, 0 external assets).
+

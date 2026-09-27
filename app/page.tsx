@@ -4,6 +4,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { type ActiveTab, TANK_PRESETS, SAFETY_CHECKLIST_ITEMS } from "./lib/constants";
 import { formatFeetInches, formatInches, formatInchesToFeetInches } from "./lib/calculations";
+import { playClickSound, playSuccessChime } from "./lib/soundEffects";
 
 // Components
 import HelpModal from "./components/HelpModal";
@@ -18,6 +19,10 @@ import BlueprintTab from "./components/BlueprintTab";
 import AIAssistant from "./components/AIAssistant";
 import JobManager from "./components/JobManager";
 import BackupSyncModal from "./components/BackupSyncModal";
+import OSStatusBar from "./components/OSStatusBar";
+import CommandPalette from "./components/CommandPalette";
+import FieldToolsDrawer from "./components/FieldToolsDrawer";
+import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 
 // Contexts & Hooks
 import { usePersistedState } from "./hooks/usePersistedState";
@@ -50,11 +55,18 @@ interface MainAppContentProps {
 
 function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: MainAppContentProps) {
   const [activeTab, setActiveTab] = usePersistedState<ActiveTab>(`${P}activeTab`, "excavation");
+  const [secondaryTab, setSecondaryTab] = usePersistedState<ActiveTab>(`${P}secondaryTab`, "blueprints");
+  const [isSplitScreen, setIsSplitScreen] = usePersistedState<boolean>(`${P}isSplitScreen`, false);
+  const [isSunlightMode, setIsSunlightMode] = usePersistedState<boolean>(`${P}isSunlightMode`, false);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
   const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
   const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
   const [aiAssistantPrompt, setAiAssistantPrompt] = useState<string | undefined>(undefined);
+  const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
+  const [showFieldTools, setShowFieldTools] = useState<boolean>(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
 
   const excavation = useExcavation();
   const dropTube = useDropTube();
@@ -66,7 +78,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
 
   const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3200);
   }, []);
 
   const handleSelectJob = useCallback((id: string) => {
@@ -247,6 +259,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     navigator.clipboard
       .writeText(text)
       .then(() => {
+        playSuccessChime();
         triggerToast("Copied Cut Sheet to Clipboard!");
       })
       .catch(() => {
@@ -255,10 +268,12 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
   }, [activeTab, excavation, dropTube, concrete, dailyReport, preBury, blueprints, triggerToast]);
 
   const handlePrint = useCallback(() => {
+    playClickSound();
     window.print();
   }, []);
 
   const handleResetDefaults = useCallback(() => {
+    playClickSound();
     if (activeTab === "excavation") excavation.resetState();
     else if (activeTab === "droptube") dropTube.resetState();
     else if (activeTab === "concrete") concrete.resetState();
@@ -270,6 +285,112 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     triggerToast("Reset tab inputs to job defaults");
   }, [activeTab, excavation, dropTube, concrete, construction, dailyReport, preBury, blueprints, triggerToast]);
 
+  const handleSelectTankPreset = useCallback(
+    (presetId: string) => {
+      const preset = TANK_PRESETS.find((p) => p.id === presetId);
+      if (preset) {
+        dropTube.updateState({
+          selectedPreset: preset.id,
+          customDiameter: preset.diameter,
+        });
+        triggerToast(`Tank Preset Applied: ${preset.name}`);
+      }
+    },
+    [dropTube, triggerToast]
+  );
+
+  const handleAppendScratchpadToReport = useCallback(
+    (memo: string) => {
+      const currentNotes = dailyReport.state.reportNotes;
+      dailyReport.updateState({
+        reportNotes: currentNotes ? `${currentNotes}\n\n[Field Scratchpad]:\n${memo}` : `[Field Scratchpad]:\n${memo}`,
+      });
+    },
+    [dailyReport]
+  );
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const isTyping =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable;
+
+      if (e.key === "Escape") {
+        setShowCommandPalette(false);
+        setShowFieldTools(false);
+        setShowShortcutsModal(false);
+        setShowHelpModal(false);
+        setShowBackupModal(false);
+        setShowAiAssistant(false);
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        playClickSound();
+        setShowCommandPalette((prev) => !prev);
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "\\") {
+        e.preventDefault();
+        playClickSound();
+        setIsSplitScreen((prev) => !prev);
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        playClickSound();
+        setShowAiAssistant((prev) => !prev);
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        handleCopyCutSheet();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        playClickSound();
+        setShowBackupModal(true);
+        return;
+      }
+
+      if (e.key === "?" && !isTyping) {
+        e.preventDefault();
+        playClickSound();
+        setShowShortcutsModal(true);
+        return;
+      }
+
+      // Number keys 1-7 for tabs
+      if (!isTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const tabMap: Record<string, ActiveTab> = {
+          "1": "excavation",
+          "2": "droptube",
+          "3": "concrete",
+          "4": "construction",
+          "5": "dailyreport",
+          "6": "prebury",
+          "7": "blueprints",
+        };
+        if (tabMap[e.key]) {
+          e.preventDefault();
+          playClickSound();
+          setActiveTab(tabMap[e.key]);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [handleCopyCutSheet, setActiveTab, setIsSplitScreen]);
+
   // Register PWA Service Worker
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -280,195 +401,365 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     }
   }, []);
 
+  const activeJob = jobList.find((j) => j.id === activeJobId);
+
+  // Tab Renderer Helper
+  const renderTabContent = (tab: ActiveTab) => {
+    if (tab === "excavation") return <ExcavationTab />;
+    if (tab === "droptube") return <DropTubeTab triggerToast={triggerToast} />;
+    if (tab === "concrete") return <ConcreteTab triggerToast={triggerToast} />;
+    if (tab === "construction") return <ConstructionTab />;
+    if (tab === "dailyreport") return <DailyReportTab triggerToast={triggerToast} />;
+    if (tab === "prebury") return <PreBuryTab triggerToast={triggerToast} />;
+    if (tab === "blueprints") {
+      return (
+        <BlueprintTab
+          triggerToast={triggerToast}
+          onOpenAiAssistant={(prompt) => {
+            setAiAssistantPrompt(prompt);
+            setShowAiAssistant(true);
+          }}
+        />
+      );
+    }
+    return null;
+  };
+
+  const tabListConfig = [
+    { id: "excavation" as const, keyNum: "1", label: "Excavation & Laser", subtitle: "Pit Shots (+15.5')", color: "cyan", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
+    { id: "droptube" as const, keyNum: "2", label: "OPW Drop Tube Cut", subtitle: "OPW 71SO Valve", color: "emerald", icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
+    { id: "concrete" as const, keyNum: "3", label: "Complete Concrete", subtitle: "Slabs, Deadman, Rebar", color: "amber", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m3 0h10" },
+    { id: "construction" as const, keyNum: "4", label: "Construction Math", subtitle: "Triangles & Volumes", color: "indigo", icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
+    { id: "dailyreport" as const, keyNum: "5", label: "Daily Job Report", subtitle: "Crew, Weather, Safety", color: "rose", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
+    { id: "prebury" as const, keyNum: "6", label: "Pre-Bury Inspector", subtitle: "Air Tests, Checks, Docs", color: "teal", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+    { id: "blueprints" as const, keyNum: "7", label: "Blueprints & Scope", subtitle: "Plans & SOW Engine", color: "violet", icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" },
+  ];
+
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-3 md:py-4 md:px-6 font-sans selection:bg-cyan-500 selection:text-slate-950">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* Toast Notification Alert */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 bg-cyan-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-2xl shadow-cyan-500/40 flex items-center gap-3 animate-fade-in border border-cyan-300">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>{toastMessage}</span>
-          </div>
-        )}
+    <div className={`min-h-screen bg-slate-950 text-slate-100 ${isSunlightMode ? "sunlight-mode" : ""}`}>
+      {/* ─── OS STATUS BAR & DOCK ────────────────────────────────────────── */}
+      <OSStatusBar
+        activeJobName={activeJob?.name || "Default Job Site"}
+        onOpenCommandPalette={() => setShowCommandPalette(true)}
+        onToggleSplitScreen={() => setIsSplitScreen((prev) => !prev)}
+        isSplitScreen={isSplitScreen}
+        onToggleSunlightMode={() => setIsSunlightMode((prev) => !prev)}
+        isSunlightMode={isSunlightMode}
+        onOpenFieldTools={() => setShowFieldTools(true)}
+        onOpenShortcuts={() => setShowShortcutsModal(true)}
+        triggerToast={triggerToast}
+      />
 
-        {/* Global Help & Formula Modal */}
-        <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      <main className="p-3 md:py-4 md:px-6 font-sans selection:bg-cyan-500 selection:text-slate-950">
+        <div className="max-w-7xl mx-auto space-y-4">
+          {/* Toast Notification Alert */}
+          {toastMessage && (
+            <div className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-cyan-500 to-indigo-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-2xl shadow-cyan-500/40 flex items-center gap-3 animate-fade-in border border-cyan-300">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-xs md:text-sm font-black">{toastMessage}</span>
+            </div>
+          )}
 
-        {/* --- Top Navigation Header & Global Toolbar --- */}
-        <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4 gap-4">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">
-                UST Field Agent &amp; Contractor Suite
+          {/* Global Help & Formula Modal */}
+          <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+
+          {/* --- Top Navigation Header & Global Toolbar --- */}
+          <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between border-b border-slate-800/80 pb-4 gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">
+                  UST Field Agent &amp; Contractor Operating System
+                </p>
+                {isSplitScreen && (
+                  <span className="px-2 py-0.2 bg-cyan-950 text-cyan-300 border border-cyan-600 rounded-full text-[9px] font-bold font-mono">
+                    DUAL SPLIT WORKSPACE
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white mt-0.5">
+                UST Field Hub
+              </h1>
+              <p className="text-[11px] md:text-xs text-slate-400 mt-0.5">
+                Excavation laser benchmark (+15.5&apos; Constant), OPW drop tube cut lengths, complete concrete, &amp; plan blueprints.
               </p>
             </div>
-            <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white mt-0.5">
-              UST Field Hub
-            </h1>
-            <p className="text-[11px] md:text-xs text-slate-400 mt-0.5">
-              Excavation laser benchmark (+15.5&apos; Constant), OPW drop tube builder, complete concrete calculator, &amp; site math.
-            </p>
-          </div>
 
-          {/* Action Bar */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <JobManager
-              jobList={jobList}
-              activeJobId={activeJobId}
-              onSelectJob={handleSelectJob}
-              onCreateJob={handleCreateJob}
-              onCloneJob={handleCloneJob}
-              onDeleteJob={handleDeleteJob}
-              triggerToast={triggerToast}
-            />
+            {/* Action Bar */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <JobManager
+                jobList={jobList}
+                activeJobId={activeJobId}
+                onSelectJob={handleSelectJob}
+                onCreateJob={handleCreateJob}
+                onCloneJob={handleCloneJob}
+                onDeleteJob={handleDeleteJob}
+                triggerToast={triggerToast}
+              />
 
-            <button
-              onClick={() => {
-                setAiAssistantPrompt(undefined);
-                setShowAiAssistant(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-950 via-cyan-950 to-indigo-950 hover:from-indigo-900 hover:to-cyan-900 border border-cyan-500/40 text-cyan-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-cyan-500/10 animate-pulse"
-              title="Open UST Field AI Copilot"
-            >
-              <span>🤖</span>
-              <span>AI Copilot</span>
-            </button>
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setAiAssistantPrompt(undefined);
+                  setShowAiAssistant(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-950 via-cyan-950 to-indigo-950 hover:from-indigo-900 hover:to-cyan-900 border border-cyan-500/40 text-cyan-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-cyan-500/10 active:scale-95"
+                title="Open UST Field AI Copilot (Ctrl+Shift+A)"
+              >
+                <span>🤖</span>
+                <span>AI Copilot</span>
+              </button>
 
-            <button
-              onClick={() => setShowBackupModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/30 text-indigo-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-indigo-500/10"
-              title="Backup, export, or restore job sites and calculations"
-            >
-              <span>☁️</span>
-              <span>Backup &amp; Sync</span>
-            </button>
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setShowBackupModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/30 text-indigo-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-indigo-500/10 active:scale-95"
+                title="Backup, export, or restore job sites and calculations (Ctrl+B)"
+              >
+                <span>☁️</span>
+                <span>Backup &amp; Sync</span>
+              </button>
 
-            <button
-              onClick={() => setShowHelpModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer"
-            >
-              <span>📖</span>
-              <span>Formulas &amp; Guide</span>
-            </button>
+              <button
+                onClick={() => {
+                  playClickSound();
+                  setShowHelpModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer active:scale-95"
+              >
+                <span>📖</span>
+                <span>Formulas</span>
+              </button>
 
-            <button
-              onClick={handleCopyCutSheet}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/30 text-cyan-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-cyan-500/10"
-            >
-              <span>📋</span>
-              <span>Copy Cut Sheet</span>
-            </button>
+              <button
+                onClick={handleCopyCutSheet}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/30 text-cyan-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-cyan-500/10 active:scale-95"
+                title="Copy Cut Sheet (Ctrl+Shift+C)"
+              >
+                <span>📋</span>
+                <span>Copy Cut Sheet</span>
+              </button>
 
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-emerald-500/10"
-            >
-              <span>🖨️</span>
-              <span>Print Submittal PDF</span>
-            </button>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-md shadow-emerald-500/10 active:scale-95"
+                title="Print Submittal PDF Package (Ctrl+P)"
+              >
+                <span>🖨️</span>
+                <span>Print PDF</span>
+              </button>
 
-            <button
-              onClick={handleResetDefaults}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer"
-              title="Reset current tab to default values"
-            >
-              <span>🔄</span>
-              <span>Reset</span>
-            </button>
-          </div>
-        </header>
+              <button
+                onClick={handleResetDefaults}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer active:scale-95"
+                title="Reset current tab to default values"
+              >
+                <span>🔄</span>
+                <span>Reset</span>
+              </button>
+            </div>
+          </header>
 
-        {/* Navigation Tabs Bar */}
-        <nav className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 shadow-inner">
-          {[
-            { id: "excavation" as const, label: "Excavation & Laser", subtitle: "Pit Shots (+15.5')", color: "cyan", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
-            { id: "droptube" as const, label: "OPW Drop Tube Cut", subtitle: "OPW 71SO Valve", color: "emerald", icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
-            { id: "concrete" as const, label: "Complete Concrete", subtitle: "Slabs, Deadman, Rebar", color: "amber", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m3 0h10" },
-            { id: "construction" as const, label: "Construction Math", subtitle: "Triangles & Volumes", color: "indigo", icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
-            { id: "dailyreport" as const, label: "Daily Job Report", subtitle: "Crew, Weather, Safety", color: "rose", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
-            { id: "prebury" as const, label: "Pre-Bury Inspector", subtitle: "Air Tests, Checks, Docs", color: "teal", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { id: "blueprints" as const, label: "Blueprints & Scope", subtitle: "Plans & SOW Engine", color: "violet", icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center md:items-start p-2 rounded-lg transition-all duration-200 cursor-pointer ${
-                activeTab === tab.id
-                  ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 ring-1 ring-cyan-300"
-                  : "bg-slate-900/50 text-slate-400 hover:text-white hover:bg-slate-900 border border-slate-800/80"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-black text-xs">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={tab.icon} />
-                </svg>
-                <span>{tab.label}</span>
+          {/* Navigation Tabs Bar */}
+          <nav className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 shadow-inner">
+            {tabListConfig.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  playClickSound();
+                  setActiveTab(tab.id);
+                }}
+                className={`flex flex-col items-start p-2 rounded-lg transition-all duration-200 cursor-pointer relative group ${
+                  activeTab === tab.id
+                    ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 ring-1 ring-cyan-300 font-bold"
+                    : "bg-slate-900/50 text-slate-400 hover:text-white hover:bg-slate-900 border border-slate-800/80"
+                }`}
+              >
+                <div className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-black text-xs truncate">
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={tab.icon} />
+                    </svg>
+                    <span className="truncate">{tab.label}</span>
+                  </div>
+                  <kbd
+                    className={`text-[9px] font-mono px-1 py-0.2 rounded transition-colors ${
+                      activeTab === tab.id
+                        ? "bg-slate-950/20 text-slate-950 font-bold"
+                        : "bg-slate-800 text-slate-500 group-hover:text-slate-300"
+                    }`}
+                  >
+                    {tab.keyNum}
+                  </kbd>
+                </div>
+                <span
+                  className={`text-[9px] font-semibold mt-0.5 truncate ${
+                    activeTab === tab.id ? "text-slate-900" : `text-${tab.color}-400`
+                  }`}
+                >
+                  {tab.subtitle}
+                </span>
+              </button>
+            ))}
+          </nav>
+
+          {/* --- TAB CONTENT: SPLIT WORKSPACE OR FULL VIEW --- */}
+          {isSplitScreen ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Primary Pane (Left) */}
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-cyan-400 font-mono text-[10px] uppercase tracking-wider font-black">
+                      Pane 1:
+                    </span>
+                    <select
+                      value={activeTab}
+                      onChange={(e) => {
+                        playClickSound();
+                        setActiveTab(e.target.value as ActiveTab);
+                      }}
+                      className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1 font-bold focus:outline-hidden focus:border-cyan-400"
+                    >
+                      {tabListConfig.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-mono">Primary View</span>
+                </div>
+                <div className="flex-1 bg-slate-950/40 rounded-2xl border border-slate-800/80 p-1">
+                  {renderTabContent(activeTab)}
+                </div>
               </div>
-              <span className={`text-[9px] font-semibold mt-0.5 ${
-                activeTab === tab.id ? "text-slate-900" : `text-${tab.color}-400`
-              }`}>
-                {tab.subtitle}
-              </span>
-            </button>
-          ))}
-        </nav>
 
-        {/* --- TAB CONTENT --- */}
-        {activeTab === "excavation" && <ExcavationTab />}
-        {activeTab === "droptube" && <DropTubeTab triggerToast={triggerToast} />}
-        {activeTab === "concrete" && <ConcreteTab triggerToast={triggerToast} />}
-        {activeTab === "construction" && <ConstructionTab />}
-        {activeTab === "dailyreport" && <DailyReportTab triggerToast={triggerToast} />}
-        {activeTab === "prebury" && <PreBuryTab triggerToast={triggerToast} />}
-        {activeTab === "blueprints" && (
-          <BlueprintTab
+              {/* Secondary Pane (Right) */}
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-indigo-400 font-mono text-[10px] uppercase tracking-wider font-black">
+                      Pane 2:
+                    </span>
+                    <select
+                      value={secondaryTab}
+                      onChange={(e) => {
+                        playClickSound();
+                        setSecondaryTab(e.target.value as ActiveTab);
+                      }}
+                      className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1 font-bold focus:outline-hidden focus:border-indigo-400"
+                    >
+                      {tabListConfig.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound();
+                        setIsSplitScreen(false);
+                      }}
+                      className="text-[10px] font-bold text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+                    >
+                      Close Split ✕
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 bg-slate-950/40 rounded-2xl border border-slate-800/80 p-1">
+                  {renderTabContent(secondaryTab)}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="transition-all duration-200">
+              {renderTabContent(activeTab)}
+            </div>
+          )}
+
+          {/* Floating AI Copilot Trigger Button */}
+          <button
+            onClick={() => {
+              playClickSound();
+              setAiAssistantPrompt(undefined);
+              setShowAiAssistant(true);
+            }}
+            className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 via-cyan-500 to-indigo-600 hover:from-indigo-500 hover:to-cyan-400 text-slate-950 font-black px-4 py-3 rounded-full shadow-2xl shadow-cyan-500/40 flex items-center gap-2 border border-cyan-300 cursor-pointer transition-all transform hover:scale-105 active:scale-95"
+            title="Open Field AI Copilot (Ctrl+Shift+A)"
+          >
+            <span className="text-base">🤖</span>
+            <span className="text-xs uppercase tracking-wider font-black">AI Copilot</span>
+          </button>
+
+          {/* AI Assistant Drawer */}
+          <AIAssistant
+            isOpen={showAiAssistant}
+            onClose={() => setShowAiAssistant(false)}
+            initialPrompt={aiAssistantPrompt}
             triggerToast={triggerToast}
+          />
+
+          {/* Global OS Command Palette */}
+          <CommandPalette
+            isOpen={showCommandPalette}
+            onClose={() => setShowCommandPalette(false)}
+            activeTab={activeTab}
+            onSelectTab={(tab) => setActiveTab(tab)}
             onOpenAiAssistant={(prompt) => {
               setAiAssistantPrompt(prompt);
               setShowAiAssistant(true);
             }}
+            onOpenBackupModal={() => setShowBackupModal(true)}
+            onCopyCutSheet={handleCopyCutSheet}
+            onPrint={handlePrint}
+            onToggleSplitScreen={() => setIsSplitScreen((prev) => !prev)}
+            onToggleSunlightMode={() => setIsSunlightMode((prev) => !prev)}
+            onOpenFieldTools={() => setShowFieldTools(true)}
+            onResetTab={handleResetDefaults}
+            jobList={jobList}
+            onSelectJob={(id) => setActiveJobId(id)}
+            onSelectTankPreset={handleSelectTankPreset}
           />
-        )}
 
-        {/* Floating AI Copilot Trigger Button */}
-        <button
-          onClick={() => {
-            setAiAssistantPrompt(undefined);
-            setShowAiAssistant(true);
-          }}
-          className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 via-cyan-500 to-indigo-600 hover:from-indigo-500 hover:to-cyan-400 text-slate-950 font-black px-4 py-3 rounded-full shadow-2xl shadow-cyan-500/40 flex items-center gap-2 border border-cyan-300 cursor-pointer transition-all transform hover:scale-105"
-        >
-          <span className="text-base">🤖</span>
-          <span className="text-xs uppercase tracking-wider">AI Copilot</span>
-        </button>
+          {/* Field OS Tools Drawer */}
+          <FieldToolsDrawer
+            isOpen={showFieldTools}
+            onClose={() => setShowFieldTools(false)}
+            triggerToast={triggerToast}
+            onAppendToDailyReport={handleAppendScratchpadToReport}
+          />
 
-        {/* AI Assistant Drawer */}
-        <AIAssistant
-          isOpen={showAiAssistant}
-          onClose={() => setShowAiAssistant(false)}
-          initialPrompt={aiAssistantPrompt}
-          triggerToast={triggerToast}
-        />
+          {/* Field OS Keyboard Shortcuts Modal */}
+          <KeyboardShortcutsModal
+            isOpen={showShortcutsModal}
+            onClose={() => setShowShortcutsModal(false)}
+          />
 
-        {/* --- PRINT ONLY PDF SUBMITTAL CUT SHEET LAYOUT --- */}
-        <PrintLayout activeTab={activeTab} />
+          {/* --- PRINT ONLY PDF SUBMITTAL CUT SHEET LAYOUT --- */}
+          <PrintLayout activeTab={activeTab} />
 
-        {/* --- BACKUP & CLOUD SYNC MODAL --- */}
-        <BackupSyncModal
-          isOpen={showBackupModal}
-          onClose={() => setShowBackupModal(false)}
-          jobList={jobList}
-          activeJobId={activeJobId}
-          triggerToast={triggerToast}
-          onRestoreComplete={() => {
-            window.location.reload();
-          }}
-        />
-      </div>
-    </main>
+          {/* --- BACKUP & CLOUD SYNC MODAL --- */}
+          <BackupSyncModal
+            isOpen={showBackupModal}
+            onClose={() => setShowBackupModal(false)}
+            jobList={jobList}
+            activeJobId={activeJobId}
+            triggerToast={triggerToast}
+            onRestoreComplete={() => {
+              window.location.reload();
+            }}
+          />
+        </div>
+      </main>
+    </div>
   );
 }
 

@@ -39,9 +39,11 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [activeImageDataUrl, setActiveImageDataUrl] = useState<string | null>(null);
-  const [loadingFile, setLoadingFile] = useState<boolean>(false);
+  const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
+  const [isProcessingFiles, setIsProcessingFiles] = useState<boolean>(false);
   const [selectedDivisionFilter, setSelectedDivisionFilter] = useState<string>("all");
   const [showAddItemModal, setShowAddItemModal] = useState<boolean>(false);
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
 
   // New Item Form
   const [newItemDivision, setNewItemDivision] = useState<SowDivisionId>("div_01_general");
@@ -64,23 +66,20 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
   // Load file content from IndexedDB when active sheet changes
   useEffect(() => {
     let isCancelled = false;
-    if (!activeSheet) {
-      setActiveImageDataUrl(null);
-      return;
-    }
+    if (!activeSheet) return;
 
-    setLoadingFile(true);
     getBlueprintFile(activeSheet.storageKey)
       .then((fileData) => {
-        if (!isCancelled && fileData) {
-          setActiveImageDataUrl(fileData.dataUrl);
+        if (!isCancelled) {
+          setActiveImageDataUrl(fileData?.dataUrl || null);
+          setLoadedStorageKey(activeSheet.storageKey);
         }
       })
       .catch((err) => {
         console.error("Failed to load blueprint file from IndexedDB:", err);
-      })
-      .finally(() => {
-        if (!isCancelled) setLoadingFile(false);
+        if (!isCancelled) {
+          setLoadedStorageKey(activeSheet.storageKey);
+        }
       });
 
     return () => {
@@ -88,37 +87,51 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
     };
   }, [activeSheet]);
 
-  // Handle File Upload (PDF, PNG, JPG)
-  const handleFileUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
+  const displayImageDataUrl = activeSheet ? activeImageDataUrl : null;
+  const isLoadingSheet = Boolean(activeSheet && loadedStorageKey !== activeSheet.storageKey);
+  const loadingFile = isProcessingFiles || isLoadingSheet;
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+  // Process uploaded files (PDF, PNG, JPG, WebP)
+  const processFiles = useCallback(
+    async (fileList: File[]) => {
+      if (!fileList || fileList.length === 0) return;
+
+      setIsProcessingFiles(true);
+      let uploadedCount = 0;
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
         const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
         const sheetId = `sheet-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         const storageKey = `bp-${sheetId}`;
 
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          const dataUrl = event.target?.result as string;
-
-          // Save large data in IndexedDB
-          await saveBlueprintFile({
-            storageKey,
-            jobId: "current",
-            sheetId,
-            fileName: file.name,
-            fileType: file.type,
-            dataUrl,
-            updatedAt: new Date().toISOString(),
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
           });
+
+          // Save large data in IndexedDB with fallback
+          try {
+            await saveBlueprintFile({
+              storageKey,
+              jobId: "current",
+              sheetId,
+              fileName: file.name,
+              fileType: file.type || (isPdf ? "application/pdf" : "image/png"),
+              dataUrl,
+              updatedAt: new Date().toISOString(),
+            });
+          } catch (dbErr) {
+            console.warn("IndexedDB save failed, using local state preview:", dbErr);
+          }
 
           // Create sheet metadata for app state
           const newSheet: BlueprintSheet = {
             id: sheetId,
-            sheetNumber: `Sheet ${state.sheets.length + i + 1}`,
+            sheetNumber: `Sheet ${state.sheets.length + uploadedCount + 1}`,
             name: file.name.replace(/\.[^/.]+$/, ""),
             fileType: isPdf ? "pdf" : "image",
             fileName: file.name,
@@ -129,22 +142,39 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
               year: "numeric",
             }),
             storageKey,
-            thumbnailUrl: isPdf ? undefined : dataUrl.slice(0, 1000), // Small slice or omit
+            thumbnailUrl: isPdf ? undefined : dataUrl.slice(0, 1000),
             notes: "Uploaded blueprint plan sheet",
           };
 
           addSheet(newSheet);
           setActiveSheetId(sheetId);
-          triggerToast?.(`Uploaded ${file.name} to Plan Set`);
-        };
-
-        reader.readAsDataURL(file);
+          setActiveImageDataUrl(dataUrl);
+          setLoadedStorageKey(storageKey);
+          uploadedCount++;
+        } catch (readErr) {
+          console.error("Error reading file:", readErr);
+          triggerToast?.(`Failed to read ${file.name}`);
+        }
       }
 
-      // Reset input
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsProcessingFiles(false);
+      if (uploadedCount > 0) {
+        triggerToast?.(`Uploaded ${uploadedCount} sheet${uploadedCount > 1 ? "s" : ""} to Plan Set`);
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     },
     [state.sheets.length, addSheet, setActiveSheetId, triggerToast]
+  );
+
+  const handleFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      await processFiles(Array.from(files));
+    },
+    [processFiles]
   );
 
   // Pan controls
@@ -290,6 +320,18 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
 
   return (
     <div className="space-y-4">
+      {/* Hidden file input for blueprint uploads (placed at root, outside any label/button) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.png,.jpg,.jpeg,.webp,image/*,application/pdf"
+        multiple
+        onChange={handleFileUpload}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
       {/* Sub-Tabs & Action Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
         <div className="flex items-center gap-1.5 overflow-x-auto">
@@ -350,18 +392,20 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
             </button>
           )}
 
-          <label className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md shadow-cyan-500/10">
+          <button
+            type="button"
+            onClick={() => {
+              if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+                fileInputRef.current.click();
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md shadow-cyan-500/10 active:scale-95"
+            title="Upload PDF or image plan sheet"
+          >
             <span>📤</span>
             <span>Upload Sheet</span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              multiple
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-          </label>
+          </button>
         </div>
       </div>
 
@@ -375,18 +419,62 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
                   Plan Set Sheets ({state.sheets.length})
                 </h2>
-                <span className="text-[10px] text-cyan-400 font-mono">Offline Ready</span>
+                <div className="flex items-center gap-1.5">
+                  {state.sheets.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = "";
+                          fileInputRef.current.click();
+                        }
+                      }}
+                      className="text-[10px] font-bold text-cyan-400 hover:text-cyan-200 bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded cursor-pointer transition-all"
+                    >
+                      + Add
+                    </button>
+                  )}
+                  <span className="text-[10px] text-cyan-400 font-mono">Offline Ready</span>
+                </div>
               </div>
 
               {state.sheets.length === 0 ? (
-                <div className="text-center py-6 px-3 bg-slate-950/60 rounded-xl border border-dashed border-slate-800 space-y-2">
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragOver(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragOver(false);
+                  }}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragOver(false);
+                    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+                      await processFiles(Array.from(e.dataTransfer.files));
+                    }
+                  }}
+                  className={`text-center py-6 px-3 bg-slate-950/60 rounded-xl border border-dashed transition-all space-y-2 ${
+                    isDragOver ? "border-cyan-400 bg-cyan-950/30" : "border-slate-800"
+                  }`}
+                >
                   <span className="text-3xl block">📑</span>
                   <p className="text-xs font-bold text-slate-300">No Sheets Uploaded</p>
                   <p className="text-[11px] text-slate-500 leading-relaxed">
                     Upload PDF blueprints or photo scans of civil, piping, or tank layouts.
                   </p>
                   <button
-                    onClick={() => fileInputRef.current?.click()}
+                    type="button"
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                        fileInputRef.current.click();
+                      }
+                    }}
                     className="mt-2 text-xs font-bold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
                   >
                     Select Plan Files
@@ -547,18 +635,50 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
-              className="flex-1 overflow-hidden relative cursor-grab active:cursor-grabbing flex items-center justify-center bg-slate-950 p-4 select-none"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(false);
+              }}
+              onDrop={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(false);
+                if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+                  await processFiles(Array.from(e.dataTransfer.files));
+                }
+              }}
+              className={`flex-1 overflow-hidden relative cursor-grab active:cursor-grabbing flex items-center justify-center bg-slate-950 p-4 select-none transition-colors ${
+                isDragOver ? "ring-2 ring-cyan-400 bg-cyan-950/20" : ""
+              }`}
             >
+              {isDragOver && (
+                <div className="absolute inset-0 bg-cyan-950/85 backdrop-blur-xs border-2 border-dashed border-cyan-400 z-30 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+                  <span className="text-4xl animate-bounce mb-2">📥</span>
+                  <p className="text-sm font-black text-cyan-300 uppercase tracking-wider">
+                    Drop Blueprint / PDF Here to Upload
+                  </p>
+                  <p className="text-xs text-cyan-400/80 mt-1">
+                    Accepts PDF plan sets, PNG, JPG, or WebP scans
+                  </p>
+                </div>
+              )}
+
               {loadingFile ? (
                 <div className="text-center space-y-2">
                   <span className="h-6 w-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin inline-block" />
                   <p className="text-xs text-slate-400">Loading plan sheet...</p>
                 </div>
-              ) : activeImageDataUrl ? (
+              ) : displayImageDataUrl ? (
                 activeSheet?.fileType === "pdf" ? (
                   <div className="w-full h-full flex flex-col items-center justify-center space-y-3">
                     <iframe
-                      src={activeImageDataUrl}
+                      src={displayImageDataUrl}
                       title="PDF Blueprint Viewer"
                       className="w-full h-full rounded border border-slate-800"
                     />
@@ -573,7 +693,7 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={activeImageDataUrl}
+                      src={displayImageDataUrl}
                       alt={activeSheet?.name || "Blueprint"}
                       className="max-w-full max-h-[520px] object-contain rounded shadow-2xl border border-slate-800 pointer-events-none"
                     />
@@ -660,7 +780,13 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
                   <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400">
                     <p>💡 Tip: Drag to pan, use +/- or scroll wheel to zoom.</p>
                     <button
-                      onClick={() => fileInputRef.current?.click()}
+                      type="button"
+                      onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = "";
+                          fileInputRef.current.click();
+                        }
+                      }}
                       className="text-cyan-400 hover:text-cyan-300 font-bold underline cursor-pointer"
                     >
                       + Upload Custom Blueprint Image / PDF
