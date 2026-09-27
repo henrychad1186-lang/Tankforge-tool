@@ -1,12 +1,14 @@
 # Project Memory: UST Field Hub
 
 ## Overview
+
 - **Project Name:** UST Field Hub (Contractor & Pre-Bury Inspector Suite)
 - **Root Path:** `c:\Users\henry\ust-app`
 - **Tech Stack:** Next.js 16 (Turbopack), React 19, TypeScript, Tailwind CSS v4
 - **Claude Codebase Bundle:** `c:\Users\henry\Downloads\ust-app-claude-bundle.md`
 
 ## Architecture & Tabs
+
 1. **Excavation & Laser Benchmark (`ExcavationTab.tsx`)**
    - Finish Grade (FG) transit benchmark rule: `+15.5'` constant for raw hole depth.
    - Bedding correction: `FG + (15.5' - Bedding Depth)`.
@@ -41,6 +43,7 @@
    - **Pre-Check:** 8-point day-before inspection walk protocol.
 
 ## State & Submittals
+
 - **Persistence & Job Isolation:** `usePersistedState` (`localStorage`) scoped under `ust-hub-v2-[jobId]-[tabId]`, dynamic context switching via `<AppStateProviders key={activeJobId}>`, plus legacy flat migration.
 - **Job Manager:** Saving, switching, cloning, and deleting multiple job sites.
 - **Backup & Sync:** Single-click JSON export/import with merge or clean restore options, and one-click clipboard payload.
@@ -50,6 +53,7 @@
 - **Reporting:** "Copy Cut Sheet" to clipboard and printable submittal PDF via `PrintLayout.tsx`.
 
 ## Field OS & UI Enhancements
+
 - **OS Status Bar & Dock (`OSStatusBar.tsx`):**
   - Real-time Field Clock with local timezone and UTC toggle.
   - Live network connectivity monitor (online/offline PWA status and network type).
@@ -69,4 +73,3 @@
   - High-visibility outdoor theme (`.sunlight-mode`) designed for harsh direct sun on jobsite Toughbooks/iPads.
 - **Tactile Audio Synthesizer (`soundEffects.ts`):**
   - Pure Web Audio API synthesized clicks, melodic success chimes, warning tones, and completion alarms (100% offline, 0 external assets).
-
