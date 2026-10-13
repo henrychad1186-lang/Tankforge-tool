@@ -59,8 +59,13 @@ export const FRACTIONS = [
   "1/2", "9/16", "5/8", "11/16", "3/4", "13/16", "7/8", "15/16"
 ];
 
-/** Excavation constant: add this to FG shot for bottom of raw pit */
-export const EXCAVATION_CONSTANT = 15.5;
+/**
+ * Default excavation geometry. Raw pit depth below FG = cover + tank OD + bedding.
+ * 56" cover + 118" OD + 12" bedding = 15.5', matching the legacy fixed constant.
+ */
+export const DEFAULT_TANK_PRESET_ID = "x-10k-118";
+export const DEFAULT_TANK_DIAMETER_IN = 118;
+export const DEFAULT_TANK_COVER_IN = 56;
 
 /** Trenching constant: add this to FG shot for pipe trench depth */
 export const TRENCH_CONSTANT = 3.0;

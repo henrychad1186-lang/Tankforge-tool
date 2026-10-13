@@ -1,6 +1,9 @@
 // encoding: utf-8
 import {
   ExcInputMode,
+  DEFAULT_TANK_PRESET_ID,
+  DEFAULT_TANK_DIAMETER_IN,
+  DEFAULT_TANK_COVER_IN,
   ValveType,
   ConcreteShape,
   ConstructionTool,
@@ -24,6 +27,9 @@ export interface ExcavationState {
   excInches: number;
   excSixteenths: number;
   beddingDepthFt: string;
+  tankPresetId: string;
+  tankDiameterIn: string;
+  tankCoverIn: string;
   slopeRun: string;
   slopeStartMode: SlopeStartMode;
   customSlopeStart: string;
@@ -37,6 +43,9 @@ export const DEFAULT_EXCAVATION_STATE: ExcavationState = {
   excInches: 6,
   excSixteenths: 0,
   beddingDepthFt: "1.0",
+  tankPresetId: DEFAULT_TANK_PRESET_ID,
+  tankDiameterIn: String(DEFAULT_TANK_DIAMETER_IN),
+  tankCoverIn: String(DEFAULT_TANK_COVER_IN),
   slopeRun: "40",
   slopeStartMode: "trench",
   customSlopeStart: "7.50",
@@ -511,13 +520,13 @@ export const DEFAULT_SOW_ITEMS: ScopeItem[] = [
     code: "02 30 00",
     title: "Tank Pit Excavation & Laser Benchmark Setting",
     specRef: "PEI RP100 §4.2",
-    description: "Excavate raw tank pit to Finish Grade (FG) + 15.5' laser benchmark constant. Maintain trench box shoring or 1.5:1 soil slope. Install 12\" compacted rounded pea gravel bedding (FG + 14.5').",
+    description: "Excavate raw tank pit to Finish Grade (FG) + cover + tank OD + bedding (default 56\" + 118\" + 12\" = FG + 15.5'). Maintain trench box shoring or 1.5:1 soil slope. Install 12\" compacted rounded pea gravel bedding (FG + 14.5').",
     quantity: "420",
     unit: "CY",
     estimatedHours: 24,
     assignedContractor: "Excavation Operator",
     status: "in_progress",
-    notes: "Transit benchmark set at raw hole = 20.00' (Shot 4.50' + 15.5' constant).",
+    notes: "Transit benchmark set at raw hole = 20.00' (Shot 4.50' + 15.5' pit depth).",
   },
   // DIV 33.1: Tanks & Anchoring
   {

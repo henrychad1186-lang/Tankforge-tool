@@ -10,8 +10,8 @@
 ## Architecture & Tabs
 
 1. **Excavation & Laser Benchmark (`ExcavationTab.tsx`)**
-   - Finish Grade (FG) transit benchmark rule: `+15.5'` constant for raw hole depth.
-   - Bedding correction: `FG + (15.5' - Bedding Depth)`.
+   - Raw pit depth: `FG shot + cover + tank OD + bedding` (cover = FG to top of tank).
+   - Top of bedding: `FG shot + cover + tank OD`; defaults (118" OD, 56" cover, 12" bed) = legacy `FG + 15.5'`.
    - Product piping trench depth: `FG + 3.0'` constant.
    - Vent line slope: 1/8" or 1/4" per foot pitch calculation.
 

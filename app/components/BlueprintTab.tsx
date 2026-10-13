@@ -562,7 +562,7 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
                 <span>Auto-Extract to Scope of Work</span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Parse tank capacities, pit excavation depth (+15.5&apos;), deadman ballast, and vent pipe slopes directly
+                Parse tank capacities, pit excavation depth, deadman ballast, and vent pipe slopes directly
                 into your active SOW.
               </p>
               <div className="grid grid-cols-2 gap-1.5 pt-1">
@@ -767,13 +767,13 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
                     {/* Bedding Pea Gravel */}
                     <rect x="30" y="270" width="640" height="25" fill="#1e293b" stroke="#475569" strokeDasharray="4 2" />
                     <text x="240" y="287" fill="#cbd5e1" fontSize="10">
-                      12&quot; Pea Gravel Bedding [FG + (15.5&apos; - 1.0&apos; Bedding) = 14.5&apos;]
+                      {(excavation.beddingDepth * 12).toFixed(0)}&quot; Pea Gravel Bedding [Top = FG + {excavation.excResults.bedTopBelowFg.toFixed(2)}&apos;]
                     </text>
 
                     {/* Raw Hole Bottom */}
                     <line x1="20" y1="305" x2="680" y2="305" stroke="#ef4444" strokeWidth="2" />
                     <text x="30" y="300" fill="#ef4444" fontSize="9" fontWeight="bold">
-                      RAW PIT BOTTOM: FG + 15.5&apos; CONSTANT (Rod Shot = 20.00&apos;)
+                      RAW PIT BOTTOM: FG + {excavation.excResults.pitDepthBelowFg.toFixed(2)}&apos; (Rod Shot = {excavation.excResults.tankHoleNoBedding.toFixed(2)}&apos;)
                     </text>
                   </svg>
 

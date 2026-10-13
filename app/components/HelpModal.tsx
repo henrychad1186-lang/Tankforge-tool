@@ -19,7 +19,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
             <span className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">📖</span>
             <div>
               <h2 className="text-lg font-black tracking-tight text-white uppercase">UST Field Reference &amp; Math Formulas</h2>
-              <p className="text-xs text-slate-400">Essential field rules, +15.5&apos; laser constants, and OPW drop tube formulas.</p>
+              <p className="text-xs text-slate-400">Essential field rules, laser benchmark depths, and OPW drop tube formulas.</p>
             </div>
           </div>
           <button
@@ -35,15 +35,15 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
           {/* 1. Excavation Rule */}
           <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-2">
             <h3 className="text-sm font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/30 text-xs">+15.5&apos;</span>
-              Excavation Grade Shots &amp; 15.5&apos; Constant Rule
+              <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/30 text-xs">FG +</span>
+              Excavation Grade Shots: Cover + Tank OD + Bedding
             </h3>
             <p className="text-xs leading-relaxed text-slate-400">
               When performing grade checks using an optical laser level or transit rod, all excavation benchmarks are derived directly from the <strong className="text-white">Finish Grade (FG) transit shot</strong>:
             </p>
             <ul className="list-disc pl-5 text-xs text-slate-300 space-y-1.5 pt-1">
-              <li><strong className="text-cyan-300">Bottom of Tank Hole (Raw Hole, No Bedding):</strong> FG Transit Shot + <strong className="text-cyan-400">15.5 Feet Constant</strong>. This gives the exact target laser rod reading at the base of the dirt pit.</li>
-              <li><strong className="text-emerald-300">Bottom of Tank Hole (Top of Pea Gravel Bedding):</strong> FG Transit Shot + <strong className="text-emerald-400">(15.5&apos; Constant - Bedding Thickness)</strong>. With standard 1.0&apos; pea gravel bed, this equals FG Shot + 14.5&apos;.</li>
+              <li><strong className="text-cyan-300">Bottom of Tank Hole (Raw Hole, No Bedding):</strong> FG Transit Shot + <strong className="text-cyan-400">Cover + Tank OD + Bedding</strong>. Cover is FG to top of tank (including slab/paving). Example: 56&quot; cover + 118&quot; OD + 12&quot; bedding = FG Shot + 15.5&apos;.</li>
+              <li><strong className="text-emerald-300">Bottom of Tank Hole (Top of Pea Gravel Bedding):</strong> FG Transit Shot + <strong className="text-emerald-400">Cover + Tank OD</strong>. Bedding thickness does not move the tank; it deepens the raw pit.</li>
               <li><strong className="text-amber-300">Trenching Depth:</strong> FG Transit Shot + <strong className="text-amber-400">3.0 Feet Constant</strong>.</li>
               <li><strong className="text-slate-200">Vent Line Slope Drainage:</strong> 1/8&quot; per foot pitch calculation between High Point and Low Point shots across the trench run.</li>
             </ul>

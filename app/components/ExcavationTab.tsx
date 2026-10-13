@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
-import { FRACTIONS, type SlopeStartMode } from '../lib/constants';
+import { FRACTIONS, TANK_PRESETS, type SlopeStartMode } from '../lib/constants';
 import { formatFeetInches } from '../lib/calculations';
 import { useExcavation } from '../lib/tab-contexts';
 
@@ -11,6 +11,8 @@ function ExcavationTabComponent() {
     updateState,
     transitShot,
     beddingDepth,
+    tankDiameterFt,
+    coverFt,
     excResults,
     slopeResults,
   } = useExcavation();
@@ -22,12 +24,15 @@ function ExcavationTabComponent() {
     excInches,
     excSixteenths,
     beddingDepthFt,
+    tankPresetId,
+    tankDiameterIn,
+    tankCoverIn,
     slopeRun,
     slopeStartMode,
     customSlopeStart,
   } = state;
 
-  const { tankHoleNoBedding, tankHoleWithBedding, trenchDepth } = excResults;
+  const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg } = excResults;
   const { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal } = slopeResults;
 
   // Sync decimal shot when switching modes
@@ -62,7 +67,7 @@ function ExcavationTabComponent() {
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               Excavation Pit Benchmark &amp; Laser Rod Calculator
               <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-extrabold border border-cyan-500/30">
-                +15.5&apos; Constant Rule
+                Cover + OD + Bedding
               </span>
             </h3>
             <p className="text-[11px] text-slate-400 mt-0.5">
@@ -198,6 +203,64 @@ function ExcavationTabComponent() {
               </div>
             )}
 
+            {/* Tank OD & Cover Inputs */}
+            <div className="pt-3 border-t border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wide">
+                  Tank Size &amp; Burial Cover
+                </label>
+                <span className="text-xs font-mono font-bold text-cyan-400">
+                  Pit = {pitDepthBelowFg.toFixed(2)} ft below FG
+                </span>
+              </div>
+              <select
+                value={tankPresetId}
+                onChange={(e) => {
+                  const preset = TANK_PRESETS.find((p) => p.id === e.target.value);
+                  updateState({
+                    tankPresetId: e.target.value,
+                    ...(preset && preset.diameter ? { tankDiameterIn: preset.diameter } : {}),
+                  });
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              >
+                {TANK_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1">Tank OD (inches)</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={tankDiameterIn}
+                    onChange={(e) => updateState({ tankDiameterIn: e.target.value, tankPresetId: "custom" })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-cyan-300 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    placeholder="118"
+                  />
+                  <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{formatFeetInches(tankDiameterFt)}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1">Cover: FG to Tank Top (inches)</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={tankCoverIn}
+                    onChange={(e) => updateState({ tankCoverIn: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-cyan-300 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    placeholder="56"
+                  />
+                  <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{formatFeetInches(coverFt)} incl. slab/paving</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-500">
+                Verify OD against the tank data plate and cover against the manufacturer install manual and engineered plans.
+              </p>
+            </div>
+
             {/* Bedding Thickness Input */}
             <div className="pt-3 border-t border-slate-800">
               <div className="flex items-center justify-between mb-1.5">
@@ -251,7 +314,7 @@ function ExcavationTabComponent() {
                   Bottom of Hole (Raw Dirt)
                 </span>
                 <span className="text-[9px] bg-cyan-950 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full font-mono font-extrabold">
-                  +15.5&apos; Constant
+                  +{pitDepthBelowFg.toFixed(2)}&apos; Below FG
                 </span>
               </div>
               <div className="mt-2">
@@ -259,7 +322,7 @@ function ExcavationTabComponent() {
                   {formatFeetInches(tankHoleNoBedding)}
                 </span>
                 <span className="block text-[10px] font-semibold text-cyan-400 font-mono mt-0.5">
-                  {tankHoleNoBedding.toFixed(2)} ft decimal (FG Shot + 15.50&apos;)
+                  {tankHoleNoBedding.toFixed(2)} ft decimal (FG Shot + {coverFt.toFixed(2)}&apos; cover + {tankDiameterFt.toFixed(2)}&apos; OD + {beddingDepth.toFixed(2)}&apos; bed)
                 </span>
               </div>
               <div className="mt-3 pt-2 border-t border-slate-800 text-[10px] text-slate-400">
@@ -274,7 +337,7 @@ function ExcavationTabComponent() {
                   Top of Pea Gravel Bedding
                 </span>
                 <span className="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-mono font-extrabold">
-                  +{(15.5 - beddingDepth).toFixed(1)}&apos; Bedded
+                  +{bedTopBelowFg.toFixed(2)}&apos; Bedded
                 </span>
               </div>
               <div className="mt-2">
@@ -282,7 +345,7 @@ function ExcavationTabComponent() {
                   {formatFeetInches(tankHoleWithBedding)}
                 </span>
                 <span className="block text-[10px] font-semibold text-emerald-400 font-mono mt-0.5">
-                  {tankHoleWithBedding.toFixed(2)} ft decimal (FG + 15.5&apos; - {beddingDepth.toFixed(1)}&apos;)
+                  {tankHoleWithBedding.toFixed(2)} ft decimal (FG Shot + {coverFt.toFixed(2)}&apos; cover + {tankDiameterFt.toFixed(2)}&apos; OD)
                 </span>
               </div>
               <div className="mt-3 pt-2 border-t border-slate-800 text-[10px] text-slate-400">
@@ -388,7 +451,7 @@ function ExcavationTabComponent() {
                 <span>📐</span> Live Laser Benchmark Cross-Section
               </h3>
               <span className="text-[9px] font-mono text-cyan-400 font-bold bg-cyan-950 px-2 py-0.5 rounded border border-cyan-500/30">
-                +15.5&apos; Baseline
+                +{pitDepthBelowFg.toFixed(2)}&apos; Pit
               </span>
             </div>
 
@@ -428,7 +491,7 @@ function ExcavationTabComponent() {
                 <line x1="550" y1="40" x2="550" y2="440" stroke="#f59e0b" strokeWidth="3" />
                 <rect x="542" y="32" width="16" height="16" fill="#f59e0b" rx="2" />
 
-                {/* Dimension: Raw Pit Bottom (+15.5' Constant) */}
+                {/* Dimension: Raw Pit Bottom (cover + OD + bedding) */}
                 <g>
                   <line x1="710" y1="40" x2="710" y2="440" stroke="#06b6d4" strokeWidth="2" />
                   <path d="M 705 40 L 715 40 M 705 440 L 715 440" stroke="#06b6d4" strokeWidth="2" />
@@ -439,7 +502,7 @@ function ExcavationTabComponent() {
                     {tankHoleNoBedding.toFixed(2)}&apos;
                   </text>
                   <text x="725" y="264" fill="#06b6d4" fontSize="10" className="font-mono font-bold">
-                    [FG + 15.5&apos; Constant]
+                    [FG + {pitDepthBelowFg.toFixed(2)}&apos;]
                   </text>
                 </g>
 
@@ -482,15 +545,21 @@ function ExcavationTabComponent() {
                     <td className="py-1.5 px-1.5 text-right font-bold text-white">{formatFeetInches(transitShot)}</td>
                     <td className="py-1.5 px-1.5 text-right text-slate-400">{transitShot.toFixed(2)}&apos;</td>
                   </tr>
+                  <tr>
+                    <td className="py-1.5 px-1.5 font-semibold text-sky-300 font-sans">Top of Tank</td>
+                    <td className="py-1.5 px-1.5 text-sky-400">+{coverFt.toFixed(2)}&apos;</td>
+                    <td className="py-1.5 px-1.5 text-right font-bold text-sky-300">{formatFeetInches(tankTopReading)}</td>
+                    <td className="py-1.5 px-1.5 text-right text-sky-400">{tankTopReading.toFixed(2)}&apos;</td>
+                  </tr>
                   <tr className="bg-cyan-950/30">
                     <td className="py-1.5 px-1.5 font-semibold text-cyan-300 font-sans">Bottom of Hole (Raw Pit)</td>
-                    <td className="py-1.5 px-1.5 text-cyan-400 font-bold">+15.5&apos;</td>
+                    <td className="py-1.5 px-1.5 text-cyan-400 font-bold">+{pitDepthBelowFg.toFixed(2)}&apos;</td>
                     <td className="py-1.5 px-1.5 text-right font-bold text-cyan-300 text-xs">{formatFeetInches(tankHoleNoBedding)}</td>
                     <td className="py-1.5 px-1.5 text-right text-cyan-400 font-bold">{tankHoleNoBedding.toFixed(2)}&apos;</td>
                   </tr>
                   <tr className="bg-emerald-950/20">
                     <td className="py-1.5 px-1.5 font-semibold text-emerald-300 font-sans">Top of Pea Gravel Bedding</td>
-                    <td className="py-1.5 px-1.5 text-emerald-400">+{(15.5 - beddingDepth).toFixed(1)}&apos;</td>
+                    <td className="py-1.5 px-1.5 text-emerald-400">+{bedTopBelowFg.toFixed(2)}&apos;</td>
                     <td className="py-1.5 px-1.5 text-right font-bold text-emerald-300">{formatFeetInches(tankHoleWithBedding)}</td>
                     <td className="py-1.5 px-1.5 text-right text-emerald-400">{tankHoleWithBedding.toFixed(2)}&apos;</td>
                   </tr>

@@ -80,6 +80,12 @@ export function useActiveJobId() {
   return useContext(ActiveJobContext) || "default-job";
 }
 
+/** Parse a numeric field; blank, negative, or invalid input falls back. 0 is kept (e.g. no bedding). */
+function parseNonNegative(raw: string | undefined, fallback: number): number {
+  const n = parseFloat(raw ?? "");
+  return isNaN(n) || n < 0 ? fallback : n;
+}
+
 // ─── 1. EXCAVATION CONTEXT ───────────────────────────────────────────────────
 
 interface ExcavationContextType {
@@ -88,6 +94,8 @@ interface ExcavationContextType {
   resetState: () => void;
   transitShot: number;
   beddingDepth: number;
+  tankDiameterFt: number;
+  coverFt: number;
   excResults: ReturnType<typeof calcExcavation>;
   slopeResults: ReturnType<typeof calcSlope>;
 }
@@ -95,10 +103,12 @@ interface ExcavationContextType {
 const ExcavationContext = createContext<ExcavationContextType | null>(null);
 
 export function ExcavationProvider({ children, jobId = "default-job" }: { children: React.ReactNode; jobId?: string }) {
-  const [state, setState] = usePersistedState<ExcavationState>(
+  const [storedState, setState] = usePersistedState<ExcavationState>(
     getJobStorageKey("excavation", jobId),
     DEFAULT_EXCAVATION_STATE
   );
+  // Jobs saved before tank OD / cover existed lack those fields — backfill from defaults.
+  const state = useMemo(() => ({ ...DEFAULT_EXCAVATION_STATE, ...storedState }), [storedState]);
 
   const updateState = useCallback((updates: Partial<ExcavationState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -116,11 +126,19 @@ export function ExcavationProvider({ children, jobId = "default-job" }: { childr
     return partsToDecimalFeet(state.excFeet, state.excInches, state.excSixteenths);
   }, [state.excInputMode, state.decTransitShot, state.excFeet, state.excInches, state.excSixteenths]);
 
-  const beddingDepth = useMemo(() => parseFloat(state.beddingDepthFt) || 1.0, [state.beddingDepthFt]);
+  const beddingDepth = useMemo(() => parseNonNegative(state.beddingDepthFt, 1.0), [state.beddingDepthFt]);
+  const tankDiameterFt = useMemo(
+    () => parseNonNegative(state.tankDiameterIn, Number(DEFAULT_EXCAVATION_STATE.tankDiameterIn)) / 12,
+    [state.tankDiameterIn]
+  );
+  const coverFt = useMemo(
+    () => parseNonNegative(state.tankCoverIn, Number(DEFAULT_EXCAVATION_STATE.tankCoverIn)) / 12,
+    [state.tankCoverIn]
+  );
 
   const excResults = useMemo(
-    () => calcExcavation(transitShot, beddingDepth),
-    [transitShot, beddingDepth]
+    () => calcExcavation(transitShot, beddingDepth, tankDiameterFt, coverFt),
+    [transitShot, beddingDepth, tankDiameterFt, coverFt]
   );
 
   const slopeResults = useMemo(
@@ -148,10 +166,12 @@ export function ExcavationProvider({ children, jobId = "default-job" }: { childr
       resetState,
       transitShot,
       beddingDepth,
+      tankDiameterFt,
+      coverFt,
       excResults,
       slopeResults,
     }),
-    [state, updateState, resetState, transitShot, beddingDepth, excResults, slopeResults]
+    [state, updateState, resetState, transitShot, beddingDepth, tankDiameterFt, coverFt, excResults, slopeResults]
   );
 
   return <ExcavationContext.Provider value={value}>{children}</ExcavationContext.Provider>;

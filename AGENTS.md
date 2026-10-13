@@ -83,8 +83,9 @@ We have implemented all 5 field-readiness upgrades to transform **UST Field Hub*
 ## 6. Tab Architecture & Calculation Specs
 
 ### 1. Excavation & Laser Benchmark (`ExcavationTab.tsx`)
-- **Finish Grade (FG) Transit Benchmark Rule:** `+15.5'` constant for raw hole depth (`transitShot + 15.5'`).
-- **Bedding Correction:** `FG + (15.5' - Bedding Depth)`.
+- **Raw Pit Depth:** `transitShot + cover + tank OD + bedding` (cover = FG to top of tank, incl. slab). Tank OD from Xerxes / Containment Solutions / Highland presets or custom.
+- **Top of Bedding:** `transitShot + cover + tank OD`. **Top of Tank:** `transitShot + cover`.
+- **Defaults:** 118" OD + 56" cover + 12" bedding = `FG + 15.5'` (reproduces the legacy fixed constant).
 - **Product Piping Trench Depth:** `FG + 3.0'` constant (`transitShot + 3.0'`).
 - **Vent Line Slope:** Configurable pitch fall rate of $1/8"$ or $1/4"$ per foot towards tank.
 

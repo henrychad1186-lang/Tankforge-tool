@@ -141,10 +141,12 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
         `--- UST Excavation & Laser Benchmark Cut Sheet ---\n` +
         `Input Mode: ${state.excInputMode.toUpperCase()}\n` +
         `Finish Grade (FG) Shot: ${formatFeetInches(transitShot)} (${transitShot.toFixed(2)} ft)\n` +
+        `Tank OD: ${formatFeetInches(excavation.tankDiameterFt)} | Cover (FG to Tank Top): ${formatFeetInches(excavation.coverFt)}\n` +
         `Pea Gravel Bedding Depth: ${beddingDepth.toFixed(2)} ft\n` +
         `--------------------------------------------------\n` +
-        `Bottom of Tank Hole (Raw Pit, No Bedding): ${formatFeetInches(excResults.tankHoleNoBedding)} (${excResults.tankHoleNoBedding.toFixed(2)} ft) [FG + 15.5' Constant]\n` +
-        `Bottom of Tank Hole (Top of Bedding): ${formatFeetInches(excResults.tankHoleWithBedding)} (${excResults.tankHoleWithBedding.toFixed(2)} ft) [FG + (15.5' - Bedding)]\n` +
+        `Top of Tank: ${formatFeetInches(excResults.tankTopReading)} (${excResults.tankTopReading.toFixed(2)} ft) [FG + Cover]\n` +
+        `Bottom of Tank Hole (Raw Pit, No Bedding): ${formatFeetInches(excResults.tankHoleNoBedding)} (${excResults.tankHoleNoBedding.toFixed(2)} ft) [FG + ${excResults.pitDepthBelowFg.toFixed(2)}' = Cover + OD + Bedding]\n` +
+        `Bottom of Tank Hole (Top of Bedding): ${formatFeetInches(excResults.tankHoleWithBedding)} (${excResults.tankHoleWithBedding.toFixed(2)} ft) [FG + ${excResults.bedTopBelowFg.toFixed(2)}' = Cover + OD]\n` +
         `Trenching Depth (Pipes): ${formatFeetInches(excResults.trenchDepth)} (${excResults.trenchDepth.toFixed(2)} ft) [FG + 3.0' Constant]\n` +
         `Vent Line Run: ${state.slopeRun} ft | Fall (1/8"/ft): +${slopeResults.totalSlopeFallInches.toFixed(2)}"\n` +
         `Vent High Point: ${formatFeetInches(slopeResults.slopeStartDecimal)} (${slopeResults.slopeStartDecimal.toFixed(2)} ft)\n` +
@@ -426,7 +428,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
   };
 
   const tabListConfig = [
-    { id: "excavation" as const, keyNum: "1", label: "Excavation & Laser", subtitle: "Pit Shots (+15.5')", color: "cyan", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
+    { id: "excavation" as const, keyNum: "1", label: "Excavation & Laser", subtitle: "Pit Shots (Cover + OD)", color: "cyan", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
     { id: "droptube" as const, keyNum: "2", label: "OPW Drop Tube Cut", subtitle: "OPW 71SO Valve", color: "emerald", icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
     { id: "concrete" as const, keyNum: "3", label: "Complete Concrete", subtitle: "Slabs, Deadman, Rebar", color: "amber", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m3 0h10" },
     { id: "construction" as const, keyNum: "4", label: "Construction Math", subtitle: "Triangles & Volumes", color: "indigo", icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
@@ -483,7 +485,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
                 UST Field Hub
               </h1>
               <p className="text-[11px] md:text-xs text-slate-400 mt-0.5">
-                Excavation laser benchmark (+15.5&apos; Constant), OPW drop tube cut lengths, complete concrete, &amp; plan blueprints.
+                Excavation laser benchmark (cover + tank OD + bedding), OPW drop tube cut lengths, complete concrete, &amp; plan blueprints.
               </p>
             </div>
 
