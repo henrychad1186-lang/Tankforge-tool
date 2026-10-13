@@ -36,6 +36,8 @@ export interface ExcavationState {
   pipeCoverIn: string;
   pipeOdIn: string;
   pipeBeddingIn: string;
+  /** Tank top to sump entry fitting centerline, inches; blank = not entered */
+  sumpEntryHeightIn: string;
   slopeRun: string;
   slopeStartMode: SlopeStartMode;
   customSlopeStart: string;
@@ -55,6 +57,7 @@ export const DEFAULT_EXCAVATION_STATE: ExcavationState = {
   pipeCoverIn: String(DEFAULT_PIPE_COVER_IN),
   pipeOdIn: String(DEFAULT_PIPE_OD_IN),
   pipeBeddingIn: String(DEFAULT_PIPE_BEDDING_IN),
+  sumpEntryHeightIn: "",
   slopeRun: "40",
   slopeStartMode: "trench",
   customSlopeStart: "7.50",

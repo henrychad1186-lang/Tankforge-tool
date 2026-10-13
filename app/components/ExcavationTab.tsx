@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { FRACTIONS, TANK_PRESETS, type SlopeStartMode } from '../lib/constants';
-import { formatFeetInches } from '../lib/calculations';
+import { formatFeetInches, SUMP_ENTRY_TOLERANCE_IN } from '../lib/calculations';
 import { useExcavation } from '../lib/tab-contexts';
 
 function ExcavationTabComponent() {
@@ -16,6 +16,7 @@ function ExcavationTabComponent() {
     pipeTrench,
     excResults,
     slopeResults,
+    sumpEntry,
   } = useExcavation();
 
   const {
@@ -31,6 +32,7 @@ function ExcavationTabComponent() {
     pipeCoverIn,
     pipeOdIn,
     pipeBeddingIn,
+    sumpEntryHeightIn,
     slopeRun,
     slopeStartMode,
     customSlopeStart,
@@ -38,9 +40,7 @@ function ExcavationTabComponent() {
 
   const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg, trenchBelowFg } = excResults;
   const { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal } = slopeResults;
-  // Bottom of pipe at the tank end; piping enters the tank-top sump, so it can't sit below the tank top.
-  const pipeInvertAtTank = slopeEndDecimal - pipeTrench.beddingFt;
-  const pipeBelowTankTop = pipeInvertAtTank > tankTopReading;
+  const pipeBottomAtTank = slopeEndDecimal - pipeTrench.beddingFt;
 
   // Sync decimal shot when switching modes
   const handleSetInputModeExc = (mode: "decimal" | "fractions") => {
@@ -482,10 +482,60 @@ function ExcavationTabComponent() {
               </div>
             </div>
 
-            {pipeBelowTankTop && (
+            {/* Sump Entry Elevation Check */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wide">
+                Sump Entry Height Above Tank Top (inches)
+              </label>
+              <input
+                type="number"
+                step="0.25"
+                min="0"
+                value={sumpEntryHeightIn}
+                onChange={(e) => updateState({ sumpEntryHeightIn: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-amber-300 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                placeholder="Top of tank to entry boot centerline — from sump submittal"
+              />
+            </div>
+
+            {sumpEntry.status === "belowTankTop" && (
               <div className="bg-red-950/40 border border-red-500/40 rounded-xl p-3 text-[11px] text-red-300">
-                ⚠ Pipe bottom at the tank end ({pipeInvertAtTank.toFixed(2)}&apos;) is deeper than the top of the tank ({tankTopReading.toFixed(2)}&apos;).
+                ⚠ Pipe bottom at the tank end ({pipeBottomAtTank.toFixed(2)}&apos;) is deeper than the top of the tank ({tankTopReading.toFixed(2)}&apos;).
                 Piping must enter the tank-top sump above the tank. Shorten the run, reduce the pitch, raise the high point, or increase tank cover.
+              </div>
+            )}
+
+            {sumpEntry.entryCenterReading !== null && sumpEntry.offsetIn !== null && sumpEntry.requiredHighPoint !== null && (
+              <div
+                className={`rounded-xl p-3 text-[11px] border space-y-1 ${
+                  sumpEntry.status === "ok"
+                    ? "bg-emerald-950/30 border-emerald-500/40 text-emerald-300"
+                    : sumpEntry.status === "low"
+                    ? "bg-red-950/40 border-red-500/40 text-red-300"
+                    : "bg-amber-950/30 border-amber-500/40 text-amber-300"
+                }`}
+              >
+                <div className="font-bold">
+                  {sumpEntry.status === "ok" && `✓ Pipe lands on sump entry (within ±${SUMP_ENTRY_TOLERANCE_IN}")`}
+                  {sumpEntry.status === "low" &&
+                    `⚠ Pipe arrives ${sumpEntry.offsetIn.toFixed(1)}" BELOW sump entry — would have to rise into the sump (trap)`}
+                  {sumpEntry.status === "high" &&
+                    `Pipe arrives ${Math.abs(sumpEntry.offsetIn).toFixed(1)}" ABOVE sump entry — needs more fall to reach it`}
+                </div>
+                <div className="font-mono text-[10px] text-slate-300">
+                  Entry centerline rod: {sumpEntry.entryCenterReading.toFixed(2)}&apos; · Pipe centerline at tank: {sumpEntry.pipeCenterAtTank.toFixed(2)}&apos;
+                </div>
+                {sumpEntry.status !== "ok" && sumpEntry.requiredHighPoint >= trenchDepth - 0.005 && (
+                  <div className="font-mono text-[10px] text-slate-300">
+                    Set trench high point to {formatFeetInches(sumpEntry.requiredHighPoint)} ({sumpEntry.requiredHighPoint.toFixed(2)}&apos;) to land centered at this run and pitch.
+                  </div>
+                )}
+                {sumpEntry.status !== "ok" && sumpEntry.requiredHighPoint < trenchDepth - 0.005 && (
+                  <div className="font-mono text-[10px] text-red-300">
+                    Landing centered needs a high point of {sumpEntry.requiredHighPoint.toFixed(2)}&apos;, shallower than minimum pipe cover ({trenchDepth.toFixed(2)}&apos;).
+                    Shorten the run, reduce pitch, increase tank cover, or use a sump with a higher entry.
+                  </div>
+                )}
               </div>
             )}
           </div>

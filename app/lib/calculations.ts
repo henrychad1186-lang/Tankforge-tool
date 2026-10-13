@@ -124,6 +124,57 @@ export function calcSlope(
   return { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal };
 }
 
+/** Pipe centerline may land within this many inches of the sump entry centerline. */
+export const SUMP_ENTRY_TOLERANCE_IN = 0.5;
+
+export type SumpEntryStatus = "ok" | "low" | "high" | "belowTankTop" | "clear";
+
+export interface SumpEntryResults {
+  /** Rod reading at pipe centerline where the run reaches the tank */
+  pipeCenterAtTank: number;
+  /** Rod reading at sump entry centerline; null when entry height is not entered */
+  entryCenterReading: number | null;
+  /** Pipe centerline minus entry centerline, inches; positive = pipe arrives low */
+  offsetIn: number | null;
+  /** Trench-bottom high point shot that lands the pipe centered on the entry */
+  requiredHighPoint: number | null;
+  status: SumpEntryStatus;
+}
+
+/**
+ * Compare where the sloped pipe arrives at the tank against the sump entry fitting.
+ * Rod readings grow with depth. Without an entry height, falls back to checking the
+ * pipe bottom against the top of the tank.
+ */
+export function calcSumpEntry(
+  slope: SlopeResults,
+  pipe: PipeTrenchGeometry,
+  tankTopReading: number,
+  entryHeightAboveTankFt: number | null
+): SumpEntryResults {
+  const pipeCenterAtTank = slope.slopeEndDecimal - pipe.beddingFt - pipe.odFt / 2;
+
+  if (entryHeightAboveTankFt === null) {
+    const pipeBottomAtTank = slope.slopeEndDecimal - pipe.beddingFt;
+    return {
+      pipeCenterAtTank,
+      entryCenterReading: null,
+      offsetIn: null,
+      requiredHighPoint: null,
+      status: pipeBottomAtTank > tankTopReading ? "belowTankTop" : "clear",
+    };
+  }
+
+  const entryCenterReading = tankTopReading - entryHeightAboveTankFt;
+  const offsetIn = (pipeCenterAtTank - entryCenterReading) * 12;
+  const requiredHighPoint =
+    entryCenterReading + pipe.beddingFt + pipe.odFt / 2 - slope.totalSlopeFallInches / 12;
+  const status: SumpEntryStatus =
+    offsetIn > SUMP_ENTRY_TOLERANCE_IN ? "low" : offsetIn < -SUMP_ENTRY_TOLERANCE_IN ? "high" : "ok";
+
+  return { pipeCenterAtTank, entryCenterReading, offsetIn, requiredHighPoint, status };
+}
+
 // ─── UST Buoyancy Safety Factor Calculations ───────────────────────────────
 
 export interface BuoyancyOptions {

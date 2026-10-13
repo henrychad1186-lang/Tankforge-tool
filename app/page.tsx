@@ -150,7 +150,10 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
         `Trenching Depth (Pipes): ${formatFeetInches(excResults.trenchDepth)} (${excResults.trenchDepth.toFixed(2)} ft) [FG + ${excResults.trenchBelowFg.toFixed(2)}' = Pipe Cover + OD + Bedding]\n` +
         `Vent Line Run: ${state.slopeRun} ft | Fall (1/8"/ft): +${slopeResults.totalSlopeFallInches.toFixed(2)}"\n` +
         `Vent High Point: ${formatFeetInches(slopeResults.slopeStartDecimal)} (${slopeResults.slopeStartDecimal.toFixed(2)} ft)\n` +
-        `Vent Low Point at Tank: ${formatFeetInches(slopeResults.slopeEndDecimal)} (${slopeResults.slopeEndDecimal.toFixed(2)} ft)\n`;
+        `Vent Low Point at Tank: ${formatFeetInches(slopeResults.slopeEndDecimal)} (${slopeResults.slopeEndDecimal.toFixed(2)} ft)\n` +
+        (excavation.sumpEntry.entryCenterReading !== null && excavation.sumpEntry.offsetIn !== null
+          ? `Sump Entry Centerline: ${excavation.sumpEntry.entryCenterReading.toFixed(2)} ft | Pipe Centerline at Tank: ${excavation.sumpEntry.pipeCenterAtTank.toFixed(2)} ft | Offset: ${excavation.sumpEntry.offsetIn > 0 ? "+" : ""}${excavation.sumpEntry.offsetIn.toFixed(1)}" (${excavation.sumpEntry.status.toUpperCase()})\n`
+          : "");
     } else if (activeTab === "droptube") {
       const { state, d_tank, h_riser, dtResults } = dropTube;
       text =

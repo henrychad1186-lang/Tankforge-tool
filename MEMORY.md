@@ -12,7 +12,7 @@
 1. **Excavation & Laser Benchmark (`ExcavationTab.tsx`)**
    - Raw pit depth: `FG shot + cover + tank OD + bedding` (cover = FG to top of tank).
    - Top of bedding: `FG shot + cover + tank OD`; defaults (118" OD, 56" cover, 12" bed) = legacy `FG + 15.5'`.
-   - Product piping trench depth: `FG shot + pipe cover + pipe OD + pipe bedding` (defaults = legacy `FG + 3.0'`); warns if pipe at tank end is below tank top.
+   - Product piping trench depth: `FG shot + pipe cover + pipe OD + pipe bedding` (defaults = legacy `FG + 3.0'`); optional sump entry height check (pipe vs entry centerline ±0.5", required high point); falls back to pipe-below-tank-top check.
    - Vent line slope: 1/8" or 1/4" per foot pitch calculation.
 
 2. **OPW 71SO Drop Tube Cut (`DropTubeTab.tsx`)**

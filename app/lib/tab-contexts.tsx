@@ -35,6 +35,7 @@ import {
   partsToDecimalFeet,
   calcExcavation,
   calcSlope,
+  calcSumpEntry,
   calcDropTube,
   calcRawVolumeCf,
   calcConcreteVolume,
@@ -100,6 +101,7 @@ interface ExcavationContextType {
   pipeTrench: PipeTrenchGeometry;
   excResults: ReturnType<typeof calcExcavation>;
   slopeResults: ReturnType<typeof calcSlope>;
+  sumpEntry: ReturnType<typeof calcSumpEntry>;
 }
 
 const ExcavationContext = createContext<ExcavationContextType | null>(null);
@@ -170,6 +172,12 @@ export function ExcavationProvider({ children, jobId = "default-job" }: { childr
     ]
   );
 
+  const sumpEntry = useMemo(() => {
+    const raw = parseFloat(state.sumpEntryHeightIn ?? "");
+    const entryHeightFt = isNaN(raw) || raw < 0 ? null : raw / 12;
+    return calcSumpEntry(slopeResults, pipeTrench, excResults.tankTopReading, entryHeightFt);
+  }, [slopeResults, pipeTrench, excResults.tankTopReading, state.sumpEntryHeightIn]);
+
   const value = useMemo(
     () => ({
       state,
@@ -182,8 +190,9 @@ export function ExcavationProvider({ children, jobId = "default-job" }: { childr
       pipeTrench,
       excResults,
       slopeResults,
+      sumpEntry,
     }),
-    [state, updateState, resetState, transitShot, beddingDepth, tankDiameterFt, coverFt, pipeTrench, excResults, slopeResults]
+    [state, updateState, resetState, transitShot, beddingDepth, tankDiameterFt, coverFt, pipeTrench, excResults, slopeResults, sumpEntry]
   );
 
   return <ExcavationContext.Provider value={value}>{children}</ExcavationContext.Provider>;
