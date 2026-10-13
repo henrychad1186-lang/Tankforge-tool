@@ -86,7 +86,7 @@ We have implemented all 5 field-readiness upgrades to transform **UST Field Hub*
 - **Raw Pit Depth:** `transitShot + cover + tank OD + bedding` (cover = FG to top of tank, incl. slab). Tank OD from Xerxes / Containment Solutions / Highland presets or custom.
 - **Top of Bedding:** `transitShot + cover + tank OD`. **Top of Tank:** `transitShot + cover`.
 - **Defaults:** 118" OD + 56" cover + 12" bedding = `FG + 15.5'` (reproduces the legacy fixed constant).
-- **Product Piping Trench Depth:** `transitShot + pipe cover + pipe OD + pipe bedding` (defaults 27" + 3" + 6" = legacy `FG + 3.0'`). Warns if the pipe bottom at the tank end of the sloped run is deeper than the top of the tank.
+- **Product Piping Trench Depth:** `transitShot + pipe cover + pipe OD + pipe bedding` (defaults 27" + 3" + 6" = legacy `FG + 3.0'`). Optional **sump entry height** (tank top → entry boot centerline): compares pipe centerline at the tank end against the entry centerline (±0.5"), flags low (trap) / high, and gives the high-point shot that lands centered (or warns if that would violate minimum pipe cover). Without it, falls back to a pipe-below-tank-top check.
 - **Vent Line Slope:** Configurable pitch fall rate of $1/8"$ or $1/4"$ per foot towards tank.
 
 ### 2. OPW 71SO Drop Tube Cut (`DropTubeTab.tsx`)

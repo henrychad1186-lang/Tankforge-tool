@@ -111,7 +111,11 @@ export default function AIAssistant({ isOpen, onClose, initialPrompt, triggerToa
     ctx += `- Raw Pit Bottom Rod Reading: ${excRes.tankHoleNoBedding.toFixed(2)} ft [FG + ${excRes.pitDepthBelowFg.toFixed(2)}' = cover + OD + bedding]\n`;
     ctx += `- Pea Gravel Bedding Depth: ${excavation.beddingDepth.toFixed(2)} ft [Top of Bedding: ${excRes.tankHoleWithBedding.toFixed(2)} ft]\n`;
     ctx += `- Trenching Depth: ${excRes.trenchDepth.toFixed(2)} ft [FG + ${excRes.trenchBelowFg.toFixed(2)}' = pipe cover + pipe OD + pipe bedding]\n`;
-    ctx += `- Vent Line Slope: ${exc.slopeRun} ft run @ ${exc.slopeRateInchesPerFoot}"/ft fall\n\n`;
+    ctx += `- Vent Line Slope: ${exc.slopeRun} ft run @ ${exc.slopeRateInchesPerFoot}"/ft fall\n`;
+    const se = excavation.sumpEntry;
+    ctx += se.offsetIn !== null
+      ? `- Sump Entry Check: pipe centerline ${se.offsetIn > 0 ? "below" : "above"} entry by ${Math.abs(se.offsetIn).toFixed(1)}" (${se.status})\n\n`
+      : `- Sump Entry Check: entry height not entered (${se.status === "belowTankTop" ? "pipe below tank top" : "clears tank top"})\n\n`;
 
     ctx += `[OPW 71SO DROP TUBE]\n`;
     ctx += `- Tank Diameter: ${dt.customDiameter}" | Riser Height: ${dt.riserHeight}"\n`;
