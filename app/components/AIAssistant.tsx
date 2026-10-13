@@ -107,7 +107,8 @@ export default function AIAssistant({ isOpen, onClose, initialPrompt, triggerToa
 
     ctx += `[EXCAVATION & BENCHMARKS]\n`;
     ctx += `- Transit Benchmark Shot: ${excavation.transitShot.toFixed(2)} ft (${exc.excInputMode})\n`;
-    ctx += `- Raw Pit Bottom Depth: ${excRes.tankHoleNoBedding.toFixed(2)} ft [FG + 15.5' Constant]\n`;
+    ctx += `- Tank OD: ${excavation.tankDiameterFt.toFixed(2)} ft | Cover (FG to tank top): ${excavation.coverFt.toFixed(2)} ft\n`;
+    ctx += `- Raw Pit Bottom Rod Reading: ${excRes.tankHoleNoBedding.toFixed(2)} ft [FG + ${excRes.pitDepthBelowFg.toFixed(2)}' = cover + OD + bedding]\n`;
     ctx += `- Pea Gravel Bedding Depth: ${excavation.beddingDepth.toFixed(2)} ft [Top of Bedding: ${excRes.tankHoleWithBedding.toFixed(2)} ft]\n`;
     ctx += `- Trenching Depth: ${excRes.trenchDepth.toFixed(2)} ft [FG + 3.0' Constant]\n`;
     ctx += `- Vent Line Slope: ${exc.slopeRun} ft run @ ${exc.slopeRateInchesPerFoot}"/ft fall\n\n`;
@@ -144,21 +145,24 @@ export default function AIAssistant({ isOpen, onClose, initialPrompt, triggerToa
     const q = query.toLowerCase();
 
     // 1. Excavation & Laser Benchmark
-    if (q.includes("laser") || q.includes("excavat") || q.includes("benchmark") || q.includes("15.5") || q.includes("trench")) {
+    if (q.includes("laser") || q.includes("excavat") || q.includes("benchmark") || q.includes("pit depth") || q.includes("trench")) {
       const shot = excavation.transitShot;
       const raw = excavation.excResults.tankHoleNoBedding;
       const bed = excavation.excResults.tankHoleWithBedding;
       const tr = excavation.excResults.trenchDepth;
+      const cover = excavation.coverFt;
+      const od = excavation.tankDiameterFt;
+      const bedDepth = excavation.beddingDepth;
 
       return `### 📐 UST Excavation & Laser Benchmark Analysis
 
 Based on your current site benchmark of **${shot.toFixed(2)} ft**:
 
 1. **Raw Pit Bottom (No Bedding):** \`${raw.toFixed(2)} ft\`
-   - Formula: \`Finish Grade Shot (${shot.toFixed(2)}') + 15.5' Constant\`
+   - Formula: \`FG Shot (${shot.toFixed(2)}') + Cover (${cover.toFixed(2)}') + Tank OD (${od.toFixed(2)}') + Bedding (${bedDepth.toFixed(2)}')\`
    - Excavate the raw dirt pit to this rod reading.
 2. **Top of Pea Gravel Bedding:** \`${bed.toFixed(2)} ft\`
-   - Formula: \`FG Shot + (15.5' - ${excavation.beddingDepth.toFixed(2)}' Bedding)\`
+   - Formula: \`FG Shot + Cover (${cover.toFixed(2)}') + Tank OD (${od.toFixed(2)}')\`
    - Install compacted rounded pea gravel (minimum 12" depth per PEI RP100 §4.2).
 3. **Piping Trenches:** \`${tr.toFixed(2)} ft\`
    - Formula: \`FG Shot + 3.0' Constant\`
@@ -213,7 +217,7 @@ For your **${gal} Gallon Tank**:
 Your active project plan contains **${count} tasks across 7 CSI divisions** (${completed} completed, **${hours} total estimated man-hours**):
 
 1. **DIV 01 General Conditions:** 811 utility ticket, traffic barricades & site fencing.
-2. **DIV 02 Pit Excavation:** Sawcutting, raw hole excavation to \`FG + 15.5'\`, 12" pea gravel bedding.
+2. **DIV 02 Pit Excavation:** Sawcutting, raw hole excavation to \`FG + ${excavation.excResults.pitDepthBelowFg.toFixed(2)}'\` (cover + tank OD + bedding), ${(excavation.beddingDepth * 12).toFixed(0)}" pea gravel bedding.
 3. **DIV 33.1 Tanks & Anchoring:** Setting double-wall tanks, deadman anchors with cotter-pinned turnbuckles.
 4. **DIV 33.2 Piping & Sumps:** Double-wall containment sumps, entry boots, product piping sloped 1/8"/ft.
 5. **DIV 26 Electrical:** Explosion-proof seal-off fittings, ATG sensor conduits.
@@ -228,7 +232,7 @@ Your active project plan contains **${count} tasks across 7 CSI divisions** (${c
 
 I reviewed your active job site profile (**${blueprints.state.facilityType}**):
 
-- **Excavation Benchmark:** Rod shot is **${excavation.transitShot.toFixed(2)}'**, giving a raw hole depth target of **${excavation.excResults.tankHoleNoBedding.toFixed(2)}'** (constant +15.5').
+- **Excavation Benchmark:** Rod shot is **${excavation.transitShot.toFixed(2)}'**, giving a raw hole depth target of **${excavation.excResults.tankHoleNoBedding.toFixed(2)}'** (FG + ${excavation.excResults.pitDepthBelowFg.toFixed(2)}' for cover + tank OD + bedding).
 - **Drop Tube Cut:** Upper cut length is **${dropTube.dtResults.upperDropTubeLength.toFixed(2)}"** with **${dropTube.state.valveType}** OPW valve.
 - **Buoyancy Status:** Safety factor is **${concrete.buoyancyResults.safetyFactor.toFixed(2)}x** (${concrete.buoyancyResults.isSafe ? "Compliant" : "Needs additional ballast"}).
 - **Air Testing:** Pre-bury test is held at **5.0 psig** for **60 minutes** per PEI RP100 §6.
@@ -261,7 +265,7 @@ You can ask me to draft daily work logs, calculate material yardages, or verify 
     }
 
     const systemPrompt = `You are a certified senior Petroleum Equipment Institute (PEI RP100 / RP1200), EPA 40 CFR 280, and OSHA UST field installation engineering expert.
-You provide direct, highly actionable contractor and inspector answers with precise math, cut lengths, laser benchmarks (+15.5' constant), and buoyancy safety factor checks (>= 1.20x).
+You provide direct, highly actionable contractor and inspector answers with precise math, cut lengths, laser benchmarks (raw pit = FG shot + cover + tank OD + bedding), and buoyancy safety factor checks (>= 1.20x).
 Answer concisely using markdown headers and bullet points.`;
 
     const contents: Array<{

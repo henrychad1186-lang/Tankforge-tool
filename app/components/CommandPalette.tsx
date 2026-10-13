@@ -72,7 +72,7 @@ export default function CommandPalette({
         id: "nav-excavation",
         category: "Navigation",
         title: "Excavation & Laser Benchmark",
-        subtitle: "Transit shot calculation, pit depths (+15.5' constant), vent slope",
+        subtitle: "Transit shot calculation, pit depths (cover + tank OD + bedding), vent slope",
         icon: "🚜",
         shortcut: "1",
         action: () => {

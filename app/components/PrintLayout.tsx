@@ -11,8 +11,8 @@ interface PrintLayoutProps {
 }
 
 function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
-  const { transitShot, beddingDepth, excResults } = useExcavation();
-  const { tankHoleNoBedding, tankHoleWithBedding, trenchDepth } = excResults;
+  const { transitShot, beddingDepth, tankDiameterFt, coverFt, excResults } = useExcavation();
+  const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg } = excResults;
 
   const { state: concreteState, concreteVolume, rebarResults, gravelResults, turnbuckleLayout, buoyancyResults } = useConcrete();
   const { concreteShape, wastePct, rebarSpacing, rebarSize, gravelDepth } = concreteState;
@@ -38,7 +38,10 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
 
       {activeTab === "excavation" && (
         <div className="space-y-4 text-xs font-mono">
-          <h2 className="text-sm font-bold border-b border-gray-400 pb-1 uppercase">Laser Transit Benchmark Shots (+15.5&apos; Constant Rule)</h2>
+          <h2 className="text-sm font-bold border-b border-gray-400 pb-1 uppercase">Laser Transit Benchmark Shots</h2>
+          <p className="text-[10px]">
+            Tank OD {formatFeetInches(tankDiameterFt)} · Cover (FG to tank top) {formatFeetInches(coverFt)} · Bedding {formatFeetInches(beddingDepth)} · Pit depth below FG {pitDepthBelowFg.toFixed(2)} ft
+          </p>
           <table className="w-full text-left border border-gray-300">
             <thead>
               <tr className="bg-gray-100 border-b border-gray-300">
@@ -55,15 +58,21 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
                 <td className="p-2 font-bold">{formatFeetInches(transitShot)}</td>
                 <td className="p-2">{transitShot.toFixed(2)} ft</td>
               </tr>
+              <tr className="border-b border-gray-200">
+                <td className="p-2 font-sans">Top of Tank</td>
+                <td className="p-2">+{coverFt.toFixed(2)}&apos;</td>
+                <td className="p-2">{formatFeetInches(tankTopReading)}</td>
+                <td className="p-2">{tankTopReading.toFixed(2)} ft</td>
+              </tr>
               <tr className="border-b border-gray-200 font-bold bg-gray-50">
                 <td className="p-2 font-sans">Bottom of Hole (Raw Dirt, No Bedding)</td>
-                <td className="p-2">+15.5&apos;</td>
+                <td className="p-2">+{pitDepthBelowFg.toFixed(2)}&apos;</td>
                 <td className="p-2">{formatFeetInches(tankHoleNoBedding)}</td>
                 <td className="p-2">{tankHoleNoBedding.toFixed(2)} ft</td>
               </tr>
               <tr className="border-b border-gray-200">
                 <td className="p-2 font-sans">Top of Pea Gravel Bedding ({beddingDepth.toFixed(1)}&apos;)</td>
-                <td className="p-2">+{(15.5 - beddingDepth).toFixed(1)}&apos;</td>
+                <td className="p-2">+{bedTopBelowFg.toFixed(2)}&apos;</td>
                 <td className="p-2">{formatFeetInches(tankHoleWithBedding)}</td>
                 <td className="p-2">{tankHoleWithBedding.toFixed(2)} ft</td>
               </tr>
