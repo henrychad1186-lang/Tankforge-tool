@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated codebase bundles / ad-hoc screenshots (kept locally, not tracked)
+full_codebase_export.txt
+ust-app-claude-bundle.md
+droptube_tab_screenshot.png
