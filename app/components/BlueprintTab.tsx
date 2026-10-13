@@ -733,7 +733,7 @@ export default function BlueprintTab({ triggerToast, onOpenAiAssistant }: Bluepr
                     {/* Pipe Trench Depth line */}
                     <line x1="20" y1="80" x2="680" y2="80" stroke="#f59e0b" strokeWidth="1" strokeDasharray="3 3" />
                     <text x="510" y="75" fill="#f59e0b" fontSize="9">
-                      Trench Depth: FG + 3.0&apos; Constant
+                      Trench Depth: FG + {excavation.excResults.trenchBelowFg.toFixed(2)}&apos;
                     </text>
 
                     {/* Tank #1 (12,000 Gal Regular) */}

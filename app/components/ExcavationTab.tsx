@@ -13,6 +13,7 @@ function ExcavationTabComponent() {
     beddingDepth,
     tankDiameterFt,
     coverFt,
+    pipeTrench,
     excResults,
     slopeResults,
   } = useExcavation();
@@ -27,13 +28,19 @@ function ExcavationTabComponent() {
     tankPresetId,
     tankDiameterIn,
     tankCoverIn,
+    pipeCoverIn,
+    pipeOdIn,
+    pipeBeddingIn,
     slopeRun,
     slopeStartMode,
     customSlopeStart,
   } = state;
 
-  const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg } = excResults;
+  const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg, trenchBelowFg } = excResults;
   const { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal } = slopeResults;
+  // Bottom of pipe at the tank end; piping enters the tank-top sump, so it can't sit below the tank top.
+  const pipeInvertAtTank = slopeEndDecimal - pipeTrench.beddingFt;
+  const pipeBelowTankTop = pipeInvertAtTank > tankTopReading;
 
   // Sync decimal shot when switching modes
   const handleSetInputModeExc = (mode: "decimal" | "fractions") => {
@@ -361,8 +368,43 @@ function ExcavationTabComponent() {
                 <span>02</span> Vent &amp; Product Line Slope Calculator
               </h2>
               <span className="text-[10px] font-mono text-amber-300 bg-amber-950 px-2 py-0.5 rounded border border-amber-500/30">
-                1/8&quot; Per Foot Pitch
+                {state.slopeRateInchesPerFoot === "0.250" ? "1/4" : "1/8"}&quot; Per Foot Pitch
               </span>
+            </div>
+
+            {/* Pipe Trench Geometry */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wide">
+                  Pipe Trench at High Point
+                </label>
+                <span className="text-xs font-mono font-bold text-amber-400">
+                  Trench = {trenchBelowFg.toFixed(2)} ft below FG
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Cover: FG to Pipe Top (in)", value: pipeCoverIn, key: "pipeCoverIn" as const, ph: "27" },
+                  { label: "Pipe OD (in)", value: pipeOdIn, key: "pipeOdIn" as const, ph: "3" },
+                  { label: "Bedding Under Pipe (in)", value: pipeBeddingIn, key: "pipeBeddingIn" as const, ph: "6" },
+                ].map((f) => (
+                  <div key={f.key}>
+                    <span className="block text-[10px] text-slate-400 mb-1">{f.label}</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={f.value}
+                      onChange={(e) => updateState({ [f.key]: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-amber-300 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                      placeholder={f.ph}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500">
+                Use the secondary (outer) pipe OD. Verify cover and bedding against the pipe manufacturer manual and engineered plans.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -403,7 +445,7 @@ function ExcavationTabComponent() {
                   onChange={(e) => updateState({ slopeStartMode: e.target.value as SlopeStartMode })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 font-mono text-slate-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/50 cursor-pointer"
                 >
-                  <option value="trench">Standard Trench (FG + 3.0&apos;)</option>
+                  <option value="trench">Pipe Trench (FG + {trenchBelowFg.toFixed(2)}&apos;)</option>
                   <option value="custom">Custom High Point Shot</option>
                 </select>
               </div>
@@ -439,6 +481,13 @@ function ExcavationTabComponent() {
                 <span className="font-mono font-bold text-amber-300 text-xs">{formatFeetInches(slopeEndDecimal)}</span>
               </div>
             </div>
+
+            {pipeBelowTankTop && (
+              <div className="bg-red-950/40 border border-red-500/40 rounded-xl p-3 text-[11px] text-red-300">
+                ⚠ Pipe bottom at the tank end ({pipeInvertAtTank.toFixed(2)}&apos;) is deeper than the top of the tank ({tankTopReading.toFixed(2)}&apos;).
+                Piping must enter the tank-top sump above the tank. Shorten the run, reduce the pitch, raise the high point, or increase tank cover.
+              </div>
+            )}
           </div>
         </div>
 
@@ -565,7 +614,7 @@ function ExcavationTabComponent() {
                   </tr>
                   <tr>
                     <td className="py-1.5 px-1.5 font-semibold text-amber-300 font-sans">Trenching Depth</td>
-                    <td className="py-1.5 px-1.5 text-amber-400">+3.0&apos;</td>
+                    <td className="py-1.5 px-1.5 text-amber-400">+{trenchBelowFg.toFixed(2)}&apos;</td>
                     <td className="py-1.5 px-1.5 text-right font-bold text-amber-300">{formatFeetInches(trenchDepth)}</td>
                     <td className="py-1.5 px-1.5 text-right text-amber-400">{trenchDepth.toFixed(2)}&apos;</td>
                   </tr>

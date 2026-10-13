@@ -110,7 +110,7 @@ export default function AIAssistant({ isOpen, onClose, initialPrompt, triggerToa
     ctx += `- Tank OD: ${excavation.tankDiameterFt.toFixed(2)} ft | Cover (FG to tank top): ${excavation.coverFt.toFixed(2)} ft\n`;
     ctx += `- Raw Pit Bottom Rod Reading: ${excRes.tankHoleNoBedding.toFixed(2)} ft [FG + ${excRes.pitDepthBelowFg.toFixed(2)}' = cover + OD + bedding]\n`;
     ctx += `- Pea Gravel Bedding Depth: ${excavation.beddingDepth.toFixed(2)} ft [Top of Bedding: ${excRes.tankHoleWithBedding.toFixed(2)} ft]\n`;
-    ctx += `- Trenching Depth: ${excRes.trenchDepth.toFixed(2)} ft [FG + 3.0' Constant]\n`;
+    ctx += `- Trenching Depth: ${excRes.trenchDepth.toFixed(2)} ft [FG + ${excRes.trenchBelowFg.toFixed(2)}' = pipe cover + pipe OD + pipe bedding]\n`;
     ctx += `- Vent Line Slope: ${exc.slopeRun} ft run @ ${exc.slopeRateInchesPerFoot}"/ft fall\n\n`;
 
     ctx += `[OPW 71SO DROP TUBE]\n`;
@@ -165,7 +165,7 @@ Based on your current site benchmark of **${shot.toFixed(2)} ft**:
    - Formula: \`FG Shot + Cover (${cover.toFixed(2)}') + Tank OD (${od.toFixed(2)}')\`
    - Install compacted rounded pea gravel (minimum 12" depth per PEI RP100 §4.2).
 3. **Piping Trenches:** \`${tr.toFixed(2)} ft\`
-   - Formula: \`FG Shot + 3.0' Constant\`
+   - Formula: \`FG Shot + Pipe Cover (${(excavation.pipeTrench.coverFt * 12).toFixed(1)}") + Pipe OD (${(excavation.pipeTrench.odFt * 12).toFixed(1)}") + Pipe Bedding (${(excavation.pipeTrench.beddingFt * 12).toFixed(1)}")\`
 4. **Shoring & Safety:** Because depth exceeds 5.0 ft, OSHA 1926 Subpart P requires trench box shoring or 1.5:1 soil sloped sidewalls.`;
     }
 

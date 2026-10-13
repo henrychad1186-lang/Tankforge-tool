@@ -67,8 +67,13 @@ export const DEFAULT_TANK_PRESET_ID = "x-10k-118";
 export const DEFAULT_TANK_DIAMETER_IN = 118;
 export const DEFAULT_TANK_COVER_IN = 56;
 
-/** Trenching constant: add this to FG shot for pipe trench depth */
-export const TRENCH_CONSTANT = 3.0;
+/**
+ * Default product pipe trench geometry. Trench depth below FG = pipe cover + pipe OD + pipe bedding.
+ * 27" cover + 3" OD + 6" bedding = 3.0', matching the legacy fixed trench constant.
+ */
+export const DEFAULT_PIPE_COVER_IN = 27;
+export const DEFAULT_PIPE_OD_IN = 3;
+export const DEFAULT_PIPE_BEDDING_IN = 6;
 
 /** Standard vent/product line slope options */
 export const SLOPE_RATES = [
