@@ -147,7 +147,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
         `Top of Tank: ${formatFeetInches(excResults.tankTopReading)} (${excResults.tankTopReading.toFixed(2)} ft) [FG + Cover]\n` +
         `Bottom of Tank Hole (Raw Pit, No Bedding): ${formatFeetInches(excResults.tankHoleNoBedding)} (${excResults.tankHoleNoBedding.toFixed(2)} ft) [FG + ${excResults.pitDepthBelowFg.toFixed(2)}' = Cover + OD + Bedding]\n` +
         `Bottom of Tank Hole (Top of Bedding): ${formatFeetInches(excResults.tankHoleWithBedding)} (${excResults.tankHoleWithBedding.toFixed(2)} ft) [FG + ${excResults.bedTopBelowFg.toFixed(2)}' = Cover + OD]\n` +
-        `Trenching Depth (Pipes): ${formatFeetInches(excResults.trenchDepth)} (${excResults.trenchDepth.toFixed(2)} ft) [FG + 3.0' Constant]\n` +
+        `Trenching Depth (Pipes): ${formatFeetInches(excResults.trenchDepth)} (${excResults.trenchDepth.toFixed(2)} ft) [FG + ${excResults.trenchBelowFg.toFixed(2)}' = Pipe Cover + OD + Bedding]\n` +
         `Vent Line Run: ${state.slopeRun} ft | Fall (1/8"/ft): +${slopeResults.totalSlopeFallInches.toFixed(2)}"\n` +
         `Vent High Point: ${formatFeetInches(slopeResults.slopeStartDecimal)} (${slopeResults.slopeStartDecimal.toFixed(2)} ft)\n` +
         `Vent Low Point at Tank: ${formatFeetInches(slopeResults.slopeEndDecimal)} (${slopeResults.slopeEndDecimal.toFixed(2)} ft)\n`;

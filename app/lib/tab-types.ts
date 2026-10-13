@@ -4,6 +4,9 @@ import {
   DEFAULT_TANK_PRESET_ID,
   DEFAULT_TANK_DIAMETER_IN,
   DEFAULT_TANK_COVER_IN,
+  DEFAULT_PIPE_COVER_IN,
+  DEFAULT_PIPE_OD_IN,
+  DEFAULT_PIPE_BEDDING_IN,
   ValveType,
   ConcreteShape,
   ConstructionTool,
@@ -30,6 +33,9 @@ export interface ExcavationState {
   tankPresetId: string;
   tankDiameterIn: string;
   tankCoverIn: string;
+  pipeCoverIn: string;
+  pipeOdIn: string;
+  pipeBeddingIn: string;
   slopeRun: string;
   slopeStartMode: SlopeStartMode;
   customSlopeStart: string;
@@ -46,6 +52,9 @@ export const DEFAULT_EXCAVATION_STATE: ExcavationState = {
   tankPresetId: DEFAULT_TANK_PRESET_ID,
   tankDiameterIn: String(DEFAULT_TANK_DIAMETER_IN),
   tankCoverIn: String(DEFAULT_TANK_COVER_IN),
+  pipeCoverIn: String(DEFAULT_PIPE_COVER_IN),
+  pipeOdIn: String(DEFAULT_PIPE_OD_IN),
+  pipeBeddingIn: String(DEFAULT_PIPE_BEDDING_IN),
   slopeRun: "40",
   slopeStartMode: "trench",
   customSlopeStart: "7.50",
@@ -576,7 +585,7 @@ export const DEFAULT_SOW_ITEMS: ScopeItem[] = [
     code: "33 52 16",
     title: "Product & Vent Piping Installation with Slope",
     specRef: "PEI RP100 §8",
-    description: "Install double-wall flex/fiberglass fuel piping in trenches (FG + 3.0'). Pitch vent lines at 1/8\" per foot continuous fall back to tank. No low-point traps.",
+    description: "Install double-wall flex/fiberglass fuel piping in trenches (FG + pipe cover + OD + bedding; default 27\" + 3\" + 6\" = FG + 3.0'). Pitch vent lines at 1/8\" per foot continuous fall back to tank. No low-point traps.",
     quantity: "320",
     unit: "LF",
     estimatedHours: 20,

@@ -49,6 +49,7 @@ import {
   calcLumber,
   calcConversions,
   ConcreteInputs,
+  type PipeTrenchGeometry,
 } from "./calculations";
 
 export const P = "ust-hub-v2-";
@@ -96,6 +97,7 @@ interface ExcavationContextType {
   beddingDepth: number;
   tankDiameterFt: number;
   coverFt: number;
+  pipeTrench: PipeTrenchGeometry;
   excResults: ReturnType<typeof calcExcavation>;
   slopeResults: ReturnType<typeof calcSlope>;
 }
@@ -136,9 +138,18 @@ export function ExcavationProvider({ children, jobId = "default-job" }: { childr
     [state.tankCoverIn]
   );
 
+  const pipeTrench = useMemo(
+    () => ({
+      coverFt: parseNonNegative(state.pipeCoverIn, Number(DEFAULT_EXCAVATION_STATE.pipeCoverIn)) / 12,
+      odFt: parseNonNegative(state.pipeOdIn, Number(DEFAULT_EXCAVATION_STATE.pipeOdIn)) / 12,
+      beddingFt: parseNonNegative(state.pipeBeddingIn, Number(DEFAULT_EXCAVATION_STATE.pipeBeddingIn)) / 12,
+    }),
+    [state.pipeCoverIn, state.pipeOdIn, state.pipeBeddingIn]
+  );
+
   const excResults = useMemo(
-    () => calcExcavation(transitShot, beddingDepth, tankDiameterFt, coverFt),
-    [transitShot, beddingDepth, tankDiameterFt, coverFt]
+    () => calcExcavation(transitShot, beddingDepth, tankDiameterFt, coverFt, pipeTrench),
+    [transitShot, beddingDepth, tankDiameterFt, coverFt, pipeTrench]
   );
 
   const slopeResults = useMemo(
@@ -168,10 +179,11 @@ export function ExcavationProvider({ children, jobId = "default-job" }: { childr
       beddingDepth,
       tankDiameterFt,
       coverFt,
+      pipeTrench,
       excResults,
       slopeResults,
     }),
-    [state, updateState, resetState, transitShot, beddingDepth, tankDiameterFt, coverFt, excResults, slopeResults]
+    [state, updateState, resetState, transitShot, beddingDepth, tankDiameterFt, coverFt, pipeTrench, excResults, slopeResults]
   );
 
   return <ExcavationContext.Provider value={value}>{children}</ExcavationContext.Provider>;

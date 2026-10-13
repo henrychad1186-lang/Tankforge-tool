@@ -4,7 +4,6 @@
 
 import {
   FRACTIONS,
-  TRENCH_CONSTANT,
   SLOPE_RATE_INCHES_PER_FOOT,
   BAG_YIELDS,
   TRUCK_CAPACITY_CY,
@@ -70,6 +69,8 @@ export interface ExcavationResults {
   bedTopBelowFg: number;
   /** Depth below FG to raw pit bottom (cover + tank OD + bedding) */
   pitDepthBelowFg: number;
+  /** Depth below FG to pipe trench bottom (pipe cover + pipe OD + pipe bedding) */
+  trenchBelowFg: number;
   tankTopReading: number;
   tankHoleNoBedding: number;
   tankHoleWithBedding: number;
@@ -77,21 +78,30 @@ export interface ExcavationResults {
 }
 
 /** All depths in decimal feet. Rod readings grow with depth, so each target = FG shot + depth below FG. */
+export interface PipeTrenchGeometry {
+  coverFt: number;
+  odFt: number;
+  beddingFt: number;
+}
+
 export function calcExcavation(
   transitShot: number,
   beddingDepth: number,
   tankDiameterFt: number,
-  coverFt: number
+  coverFt: number,
+  pipe: PipeTrenchGeometry
 ): ExcavationResults {
   const bedTopBelowFg = coverFt + tankDiameterFt;
   const pitDepthBelowFg = bedTopBelowFg + beddingDepth;
+  const trenchBelowFg = pipe.coverFt + pipe.odFt + pipe.beddingFt;
   return {
     bedTopBelowFg,
     pitDepthBelowFg,
+    trenchBelowFg,
     tankTopReading: transitShot + coverFt,
     tankHoleNoBedding: transitShot + pitDepthBelowFg,
     tankHoleWithBedding: transitShot + bedTopBelowFg,
-    trenchDepth: transitShot + TRENCH_CONSTANT,
+    trenchDepth: transitShot + trenchBelowFg,
   };
 }
 

@@ -12,7 +12,7 @@ interface PrintLayoutProps {
 
 function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
   const { transitShot, beddingDepth, tankDiameterFt, coverFt, excResults } = useExcavation();
-  const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg } = excResults;
+  const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg, trenchBelowFg } = excResults;
 
   const { state: concreteState, concreteVolume, rebarResults, gravelResults, turnbuckleLayout, buoyancyResults } = useConcrete();
   const { concreteShape, wastePct, rebarSpacing, rebarSize, gravelDepth } = concreteState;
@@ -78,7 +78,7 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
               </tr>
               <tr>
                 <td className="p-2 font-sans">Trenching Depth (Product Lines)</td>
-                <td className="p-2">+3.0&apos;</td>
+                <td className="p-2">+{trenchBelowFg.toFixed(2)}&apos;</td>
                 <td className="p-2">{formatFeetInches(trenchDepth)}</td>
                 <td className="p-2">{trenchDepth.toFixed(2)} ft</td>
               </tr>
