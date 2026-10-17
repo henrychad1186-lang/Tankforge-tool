@@ -3,6 +3,7 @@
 
 import React, { useState, useRef } from "react";
 import { P } from "../lib/tab-contexts";
+import { getUnsavedEntries } from "../hooks/usePersistedState";
 
 interface Job {
   id: string;
@@ -28,6 +29,27 @@ const RAW_TEXT_KEYS = new Set(["ust-hub-gemini-key"]);
  */
 function toStoredValue(key: string, val: unknown): string {
   return RAW_TEXT_KEYS.has(key) && typeof val === "string" ? val : JSON.stringify(val);
+}
+
+/** Every UST record in storage, plus values held in memory because storage is full. */
+function collectBackupRecords(): Record<string, unknown> {
+  const records: Record<string, unknown> = {};
+  const add = (key: string, val: string) => {
+    try {
+      records[key] = JSON.parse(val);
+    } catch {
+      records[key] = val;
+    }
+  };
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith(P) || key.startsWith("ust-hub-"))) {
+      const val = localStorage.getItem(key);
+      if (val) add(key, val);
+    }
+  }
+  getUnsavedEntries().forEach(([key, val]) => add(key, val));
+  return records;
 }
 
 interface BackupPayload {
@@ -57,21 +79,7 @@ export default function BackupSyncModal({
   // Export all localStorage records scoped under UST app prefix
   const handleExportJson = () => {
     try {
-      const records: Record<string, unknown> = {};
-
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith(P) || key.startsWith("ust-hub-"))) {
-          const val = localStorage.getItem(key);
-          if (val) {
-            try {
-              records[key] = JSON.parse(val);
-            } catch {
-              records[key] = val;
-            }
-          }
-        }
-      }
+      const records = collectBackupRecords();
 
       const payload: BackupPayload = {
         app: "UST Field Hub",
@@ -101,20 +109,7 @@ export default function BackupSyncModal({
 
   const handleCopyClipboard = () => {
     try {
-      const records: Record<string, unknown> = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith(P) || key.startsWith("ust-hub-"))) {
-          const val = localStorage.getItem(key);
-          if (val) {
-            try {
-              records[key] = JSON.parse(val);
-            } catch {
-              records[key] = val;
-            }
-          }
-        }
-      }
+      const records = collectBackupRecords();
 
       const payload: BackupPayload = {
         app: "UST Field Hub",
