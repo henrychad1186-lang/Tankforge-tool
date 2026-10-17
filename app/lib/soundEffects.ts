@@ -31,9 +31,20 @@ export function isAudioEnabled(): boolean {
   return localStorage.getItem("ust-hub-audio-enabled") !== "false";
 }
 
+const audioPreferenceListeners = new Set<() => void>();
+
+/** Subscribe to audio on/off changes (for useSyncExternalStore). */
+export function subscribeAudioPreference(listener: () => void): () => void {
+  audioPreferenceListeners.add(listener);
+  return () => {
+    audioPreferenceListeners.delete(listener);
+  };
+}
+
 export function setAudioEnabled(enabled: boolean): void {
   if (typeof window === "undefined") return;
   localStorage.setItem("ust-hub-audio-enabled", enabled ? "true" : "false");
+  audioPreferenceListeners.forEach((listener) => listener());
 }
 
 /** Soft tactile click for buttons and tab switches */

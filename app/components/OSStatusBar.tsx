@@ -1,8 +1,35 @@
 // encoding: utf-8
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { isAudioEnabled, setAudioEnabled, playClickSound } from "../lib/soundEffects";
+import React, { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { isAudioEnabled, setAudioEnabled, playClickSound, subscribeAudioPreference } from "../lib/soundEffects";
+
+// Browser state read via useSyncExternalStore: server/hydration render uses the
+// fallback, then the live value — no setState in effects, no hydration mismatch.
+type NetworkConnection = EventTarget & { effectiveType?: string };
+
+function getConnection(): NetworkConnection | undefined {
+  return (navigator as unknown as { connection?: NetworkConnection }).connection;
+}
+
+function subscribeOnline(notify: () => void) {
+  window.addEventListener("online", notify);
+  window.addEventListener("offline", notify);
+  return () => {
+    window.removeEventListener("online", notify);
+    window.removeEventListener("offline", notify);
+  };
+}
+
+function subscribeConnection(notify: () => void) {
+  const conn = getConnection();
+  conn?.addEventListener?.("change", notify);
+  return () => conn?.removeEventListener?.("change", notify);
+}
+
+function getEffectiveType(): string {
+  return getConnection()?.effectiveType?.toUpperCase() ?? "Online";
+}
 
 interface OSStatusBarProps {
   activeJobName: string;
@@ -33,8 +60,8 @@ export default function OSStatusBar({
   const [showUtc, setShowUtc] = useState<boolean>(false);
 
   // Network state
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [effectiveType, setEffectiveType] = useState<string>("Online");
+  const isOnline = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
+  const effectiveType = useSyncExternalStore(subscribeConnection, getEffectiveType, () => "Online");
 
   // Storage telemetry
   const [storageUsageMb, setStorageUsageMb] = useState<number | null>(null);
@@ -45,7 +72,7 @@ export default function OSStatusBar({
   const [isCharging, setIsCharging] = useState<boolean | null>(null);
 
   // Audio feedback toggle
-  const [audioActive, setAudioActive] = useState<boolean>(true);
+  const audioActive = useSyncExternalStore(subscribeAudioPreference, isAudioEnabled, () => true);
 
   // Initialize clock
   useEffect(() => {
@@ -78,26 +105,10 @@ export default function OSStatusBar({
     return () => clearInterval(interval);
   }, [showUtc]);
 
-  // Network status listener
+  // Network status toasts
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handleOnline = () => {
-      setIsOnline(true);
-      triggerToast?.("System Online: Network Connected");
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      triggerToast?.("System Offline: PWA Offline Mode Active");
-    };
-
-    setIsOnline(navigator.onLine);
-
-    // Network connection details
-    const conn = (navigator as unknown as { connection?: { effectiveType?: string } }).connection;
-    if (conn?.effectiveType) {
-      setEffectiveType(conn.effectiveType.toUpperCase());
-    }
+    const handleOnline = () => triggerToast?.("System Online: Network Connected");
+    const handleOffline = () => triggerToast?.("System Offline: PWA Offline Mode Active");
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -143,14 +154,8 @@ export default function OSStatusBar({
     }
   }, []);
 
-  // Audio preference sync
-  useEffect(() => {
-    setAudioActive(isAudioEnabled());
-  }, []);
-
   const handleToggleAudio = useCallback(() => {
     const nextState = !audioActive;
-    setAudioActive(nextState);
     setAudioEnabled(nextState);
     if (nextState) {
       playClickSound();

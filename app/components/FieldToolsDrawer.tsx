@@ -1,7 +1,7 @@
 // encoding: utf-8
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { playClickSound, playAlarmSound, playSuccessChime } from "../lib/soundEffects";
 import { usePersistedState } from "../hooks/usePersistedState";
 
