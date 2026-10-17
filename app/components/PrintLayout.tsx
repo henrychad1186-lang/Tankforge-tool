@@ -2,7 +2,7 @@
 "use client";
 
 import React, { memo } from "react";
-import { formatFeetInches, SUMP_ENTRY_TOLERANCE_IN } from "../lib/calculations";
+import { formatFeetInches, formatOffsetIn, SUMP_ENTRY_TOLERANCE_IN } from "../lib/calculations";
 import type { ActiveTab } from "../lib/constants";
 import { useExcavation, useConcrete, usePreBury, useBlueprints } from "../lib/tab-contexts";
 
@@ -12,7 +12,7 @@ interface PrintLayoutProps {
 
 function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
   const { state: excState, transitShot, beddingDepth, tankDiameterFt, coverFt, pipeTrench, excResults, slopeResults, sumpEntry } = useExcavation();
-  const { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal } = slopeResults;
+  const { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal, runFeet } = slopeResults;
   const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg, trenchBelowFg } = excResults;
 
   const { state: concreteState, concreteVolume, rebarResults, gravelResults, turnbuckleLayout, buoyancyResults } = useConcrete();
@@ -88,7 +88,7 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
 
           <h2 className="text-sm font-bold border-b border-gray-400 pb-1 uppercase">Product / Vent Line Slope &amp; Sump Entry Check</h2>
           <p className="text-[10px]">
-            Pipe cover {(pipeTrench.coverFt * 12).toFixed(1)}&quot; · Pipe OD {(pipeTrench.odFt * 12).toFixed(1)}&quot; · Bedding under pipe {(pipeTrench.beddingFt * 12).toFixed(1)}&quot; · Run {excState.slopeRun} ft @ {excState.slopeRateInchesPerFoot === "0.250" ? "1/4" : "1/8"}&quot;/ft · Total fall {totalSlopeFallInches.toFixed(2)}&quot;
+            Pipe cover {(pipeTrench.coverFt * 12).toFixed(1)}&quot; · Pipe OD {(pipeTrench.odFt * 12).toFixed(1)}&quot; · Bedding under pipe {(pipeTrench.beddingFt * 12).toFixed(1)}&quot; · Run {runFeet} ft @ {excState.slopeRateInchesPerFoot === "0.250" ? "1/4" : "1/8"}&quot;/ft · Total fall {totalSlopeFallInches.toFixed(2)}&quot;
           </p>
           <table className="w-full text-left border border-gray-300">
             <tbody>
@@ -118,16 +118,16 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
           </table>
           <div className="border border-gray-400 p-2 font-sans text-[11px] space-y-1">
             {sumpEntry.status === "ok" && (
-              <p><strong>RESULT: PASS</strong> — pipe lands on sump entry within ±{SUMP_ENTRY_TOLERANCE_IN}&quot; (offset {sumpEntry.offsetIn?.toFixed(1)}&quot;).</p>
+              <p><strong>RESULT: PASS</strong> — pipe lands on sump entry within ±{SUMP_ENTRY_TOLERANCE_IN}&quot; (offset {formatOffsetIn(sumpEntry.offsetIn ?? 0)}&quot;).</p>
             )}
             {sumpEntry.status === "low" && (
-              <p><strong>RESULT: FAIL — PIPE LOW</strong> — pipe arrives {sumpEntry.offsetIn?.toFixed(1)}&quot; below sump entry and would have to rise into the sump (trap).</p>
+              <p><strong>RESULT: FAIL — PIPE LOW</strong> — pipe arrives {formatOffsetIn(sumpEntry.offsetIn ?? 0)}&quot; below sump entry and would have to rise into the sump (trap).</p>
             )}
             {sumpEntry.status === "high" && (
-              <p><strong>RESULT: ADJUST — PIPE HIGH</strong> — pipe arrives {Math.abs(sumpEntry.offsetIn ?? 0).toFixed(1)}&quot; above sump entry; more fall required.</p>
+              <p><strong>RESULT: ADJUST — PIPE HIGH</strong> — pipe arrives {formatOffsetIn(sumpEntry.offsetIn ?? 0)}&quot; above sump entry; more fall required.</p>
             )}
             {(sumpEntry.status === "low" || sumpEntry.status === "high") && sumpEntry.requiredHighPoint !== null && (
-              sumpEntry.requiredHighPoint >= trenchDepth - 0.005 ? (
+              !sumpEntry.requiredHighPointViolatesCover ? (
                 <p>Corrective high point shot to land centered: {formatFeetInches(sumpEntry.requiredHighPoint)} ({sumpEntry.requiredHighPoint.toFixed(2)} ft).</p>
               ) : (
                 <p>Landing centered requires a high point of {sumpEntry.requiredHighPoint.toFixed(2)} ft, shallower than minimum pipe cover ({trenchDepth.toFixed(2)} ft). Shorten run, reduce pitch, increase tank cover, or use a sump with a higher entry.</p>
