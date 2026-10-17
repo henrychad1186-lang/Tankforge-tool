@@ -19,6 +19,17 @@ interface BackupSyncModalProps {
   onRestoreComplete: () => void;
 }
 
+/** Keys written with plain localStorage.setItem (not JSON); everything else is JSON from usePersistedState. */
+const RAW_TEXT_KEYS = new Set(["ust-hub-gemini-key"]);
+
+/**
+ * Export JSON-parses each record, so a stored JSON string ("job-a2") arrives as a plain
+ * string (job-a2). Re-encode everything as JSON except the raw-text keys.
+ */
+function toStoredValue(key: string, val: unknown): string {
+  return RAW_TEXT_KEYS.has(key) && typeof val === "string" ? val : JSON.stringify(val);
+}
+
 interface BackupPayload {
   app: string;
   version: string;
@@ -144,9 +155,10 @@ export default function BackupSyncModal({
         keysToRemove.forEach((k) => localStorage.removeItem(k));
       }
 
-      // Write imported records
+      // Write imported records. Merge keeps this device's active job.
       Object.entries(parsed.records).forEach(([key, val]) => {
-        localStorage.setItem(key, typeof val === "string" ? val : JSON.stringify(val));
+        if (importMode === "merge" && key === "ust-hub-activeJobId") return;
+        localStorage.setItem(key, toStoredValue(key, val));
       });
 
       // Update or merge jobList
