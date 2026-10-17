@@ -25,7 +25,7 @@ import FieldToolsDrawer from "./components/FieldToolsDrawer";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 
 // Contexts & Hooks
-import { usePersistedState } from "./hooks/usePersistedState";
+import { usePersistedState, useUnsavedStorageCount } from "./hooks/usePersistedState";
 import {
   AppStateProviders,
   useExcavation,
@@ -62,6 +62,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
   const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
+  const unsavedStorageCount = useUnsavedStorageCount();
   const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
   const [aiAssistantPrompt, setAiAssistantPrompt] = useState<string | undefined>(undefined);
   const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
@@ -464,6 +465,27 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-xs md:text-sm font-black">{toastMessage}</span>
+            </div>
+          )}
+
+          {/* Storage-full warning: some edits exist only in memory */}
+          {unsavedStorageCount > 0 && (
+            <div role="alert" className="bg-red-950/80 border border-red-500/60 text-red-200 rounded-2xl px-4 py-3 flex flex-col md:flex-row md:items-center gap-3">
+              <div className="flex-1 text-xs md:text-sm">
+                <p className="font-black text-red-300">⚠ Device storage is full — changes are not being saved</p>
+                <p className="mt-0.5">
+                  {unsavedStorageCount} {unsavedStorageCount === 1 ? "section has" : "sections have"} changes held only in memory.
+                  They will be lost if you reload or close the app. Download a backup now (it includes these changes),
+                  then free space by deleting photos or old jobs.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBackupModal(true)}
+                className="shrink-0 px-4 py-2 rounded-xl bg-red-500 text-slate-950 text-xs font-black hover:bg-red-400 cursor-pointer"
+              >
+                Open Backup &amp; Sync
+              </button>
             </div>
           )}
 

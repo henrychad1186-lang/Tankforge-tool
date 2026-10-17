@@ -22,7 +22,10 @@ function readRaw(key: string): string | null {
   }
 }
 
+const unsavedListeners = new Set<() => void>();
+
 function writeRaw(key: string, raw: string) {
+  const unsavedBefore = unsavedValues.size;
   try {
     localStorage.setItem(key, raw);
     unsavedValues.delete(key);
@@ -31,6 +34,24 @@ function writeRaw(key: string, raw: string) {
     unsavedValues.set(key, raw);
   }
   listeners.get(key)?.forEach((notify) => notify());
+  if (unsavedValues.size !== unsavedBefore) unsavedListeners.forEach((notify) => notify());
+}
+
+/** Values held only in memory because their storage write failed, as [key, raw JSON] pairs. */
+export function getUnsavedEntries(): [string, string][] {
+  return [...unsavedValues];
+}
+
+function subscribeUnsaved(notify: () => void) {
+  unsavedListeners.add(notify);
+  return () => {
+    unsavedListeners.delete(notify);
+  };
+}
+
+/** Number of persisted-state keys whose latest value could not be written to storage. */
+export function useUnsavedStorageCount(): number {
+  return useSyncExternalStore(subscribeUnsaved, () => unsavedValues.size, () => 0);
 }
 
 function subscribe(key: string, notify: () => void) {
