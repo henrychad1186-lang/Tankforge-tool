@@ -1,52 +1,90 @@
 // encoding: utf-8
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
+
+// ─── localStorage as an external store ───────────────────────────────────────
+// Reading storage during render made the first client render differ from the
+// server HTML (hydration mismatch). useSyncExternalStore renders the default on
+// the server and during hydration, then switches to the stored value.
+
+const listeners = new Map<string, Set<() => void>>();
+/** Values whose localStorage write failed (quota full); kept in memory so the UI still updates. */
+const unsavedValues = new Map<string, string>();
+
+function readRaw(key: string): string | null {
+  const unsaved = unsavedValues.get(key);
+  if (unsaved !== undefined) return unsaved;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeRaw(key: string, raw: string) {
+  try {
+    localStorage.setItem(key, raw);
+    unsavedValues.delete(key);
+  } catch {
+    // Storage full or unavailable — keep the value in memory for this session
+    unsavedValues.set(key, raw);
+  }
+  listeners.get(key)?.forEach((notify) => notify());
+}
+
+function subscribe(key: string, notify: () => void) {
+  let set = listeners.get(key);
+  if (!set) {
+    set = new Set();
+    listeners.set(key, set);
+  }
+  set.add(notify);
+  return () => {
+    set.delete(notify);
+  };
+}
+
+/** Last parsed value per key, so renders and functional updates don't re-parse unchanged storage. */
+const parsedCache = new Map<string, { raw: string; value: unknown }>();
+
+function parseOr<T>(key: string, raw: string | null, fallback: T): T {
+  if (raw === null) return fallback;
+  const cached = parsedCache.get(key);
+  if (cached?.raw === raw) return cached.value as T;
+  try {
+    const value = JSON.parse(raw) as T;
+    parsedCache.set(key, { raw, value });
+    return value;
+  } catch {
+    // Corrupted data or parse failure — fall back to default
+    return fallback;
+  }
+}
 
 /**
  * A localStorage-backed useState hook.
- * On mount, it restores the value from localStorage (if present).
- * On every state change, it persists the new value.
- * If key changes, it loads the new key's value without overwriting.
+ * Renders defaultValue on the server and during hydration, then the stored value.
+ * Every state change is persisted. When key changes, the new key's value is loaded.
  */
 export function usePersistedState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [prevKey, setPrevKey] = useState(key);
-  const [state, setState] = useState<T>(() => {
-    if (typeof window === "undefined") return defaultValue;
-    try {
-      const stored = localStorage.getItem(key);
-      if (stored !== null) {
-        return JSON.parse(stored) as T;
-      }
-    } catch {
-      // Corrupted data or parse failure — fall back to default
-    }
-    return defaultValue;
-  });
+  const [initialDefault] = useState(defaultValue);
 
-  if (prevKey !== key) {
-    setPrevKey(key);
-    let newVal = defaultValue;
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(key);
-        if (stored !== null) {
-          newVal = JSON.parse(stored) as T;
-        }
-      } catch {
-        // ignore
-      }
-    }
-    setState(newVal);
-  }
+  const raw = useSyncExternalStore(
+    useCallback((notify: () => void) => subscribe(key, notify), [key]),
+    () => readRaw(key),
+    () => null
+  );
+  const state = useMemo(() => parseOr(key, raw, initialDefault), [key, raw, initialDefault]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(state));
-    } catch {
-      // Storage full or unavailable — fail silently
-    }
-  }, [key, state]);
+  const setState = useCallback<React.Dispatch<React.SetStateAction<T>>>(
+    (action) => {
+      const prev = parseOr(key, readRaw(key), initialDefault);
+      const next = typeof action === "function" ? (action as (p: T) => T)(prev) : action;
+      writeRaw(key, JSON.stringify(next));
+    },
+    [key, initialDefault]
+  );
 
   return [state, setState];
 }
