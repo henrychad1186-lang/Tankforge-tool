@@ -36,7 +36,6 @@ interface CommandPaletteProps {
 export default function CommandPalette({
   isOpen,
   onClose,
-  activeTab,
   onSelectTab,
   onOpenAiAssistant,
   onOpenBackupModal,
@@ -55,13 +54,21 @@ export default function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Focus input whenever opened
-  useEffect(() => {
+  // Reset search whenever opened (adjusting state during render, not in an effect)
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
     if (isOpen) {
       setSearchQuery("");
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
     }
+  }
+
+  // Focus input whenever opened
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
   }, [isOpen]);
 
   // Build command registry
@@ -343,13 +350,8 @@ export default function CommandPalette({
     );
   }, [allCommands, searchQuery]);
 
-  // Adjust selection bounds
-  useEffect(() => {
-    setSelectedIndex((prev) => {
-      if (filteredCommands.length === 0) return 0;
-      return Math.min(prev, filteredCommands.length - 1);
-    });
-  }, [filteredCommands]);
+  // Keep selection within the filtered list
+  const activeIndex = Math.min(selectedIndex, Math.max(filteredCommands.length - 1, 0));
 
   // Keyboard navigation inside modal
   const handleKeyDown = useCallback(
@@ -357,14 +359,14 @@ export default function CommandPalette({
       if (e.key === "ArrowDown") {
         e.preventDefault();
         playClickSound();
-        setSelectedIndex((prev) => (prev + 1) % (filteredCommands.length || 1));
+        setSelectedIndex((activeIndex + 1) % (filteredCommands.length || 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         playClickSound();
-        setSelectedIndex((prev) => (prev - 1 + filteredCommands.length) % (filteredCommands.length || 1));
+        setSelectedIndex((activeIndex - 1 + filteredCommands.length) % (filteredCommands.length || 1));
       } else if (e.key === "Enter") {
         e.preventDefault();
-        const selected = filteredCommands[selectedIndex];
+        const selected = filteredCommands[activeIndex];
         if (selected) {
           playSuccessChime();
           selected.action();
@@ -375,18 +377,18 @@ export default function CommandPalette({
         onClose();
       }
     },
-    [filteredCommands, selectedIndex, onClose]
+    [filteredCommands, activeIndex, onClose]
   );
 
   // Scroll active item into view
   useEffect(() => {
     if (!listRef.current) return;
     const items = listRef.current.querySelectorAll("[data-command-item]");
-    const activeItem = items[selectedIndex] as HTMLElement | undefined;
+    const activeItem = items[activeIndex] as HTMLElement | undefined;
     if (activeItem) {
       activeItem.scrollIntoView({ block: "nearest" });
     }
-  }, [selectedIndex]);
+  }, [activeIndex]);
 
   if (!isOpen) return null;
 
@@ -441,7 +443,7 @@ export default function CommandPalette({
             </div>
           ) : (
             filteredCommands.map((cmd, idx) => {
-              const isSelected = idx === selectedIndex;
+              const isSelected = idx === activeIndex;
               return (
                 <div
                   key={cmd.id}
