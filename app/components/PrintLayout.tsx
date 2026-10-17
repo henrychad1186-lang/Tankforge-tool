@@ -3,8 +3,8 @@
 
 import React, { memo } from "react";
 import { formatFeetInches, formatOffsetIn, SUMP_ENTRY_TOLERANCE_IN } from "../lib/calculations";
-import type { ActiveTab } from "../lib/constants";
-import { useExcavation, useConcrete, usePreBury, useBlueprints } from "../lib/tab-contexts";
+import { SAFETY_CHECKLIST_ITEMS, type ActiveTab } from "../lib/constants";
+import { useExcavation, useConcrete, useDailyReport, usePreBury, useBlueprints } from "../lib/tab-contexts";
 
 interface PrintLayoutProps {
   activeTab: ActiveTab;
@@ -20,6 +20,13 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
   const { adjustedVolumeCy, adjustedVolumeCf, bags80lb, bags60lb, bags40lb, truckLoads } = concreteVolume;
   const { totalLf: rebarTotalLf, pieces20: rebarPieces20 } = rebarResults;
   const { cy: gravelCy, tons: gravelTons } = gravelResults;
+
+  const { state: daily } = useDailyReport();
+  const dailyWork = daily.workEntries.filter((e) => e.task.trim());
+  const dailyMaterials = daily.materialEntries.filter((e) => e.material.trim());
+  const dailyTaskHours = dailyWork.reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+  const dailyCrew = parseInt(daily.crewSize) || 0;
+  const dailySafetyChecked = SAFETY_CHECKLIST_ITEMS.filter((item) => daily.safetyChecks[item.id]).length;
 
   const preBury = usePreBury();
   const blueprints = useBlueprints();
@@ -274,6 +281,102 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
                 </div>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "dailyreport" && (
+        <div className="space-y-4 text-xs font-mono">
+          <h2 className="text-sm font-bold border-b border-black pb-1 uppercase">Daily Job Report</h2>
+          <div className="border border-gray-300 p-4 rounded bg-gray-50 grid grid-cols-2 gap-4">
+            <div>
+              <p><strong>Report Date:</strong> {daily.reportDate}</p>
+              <p><strong>Job Site:</strong> {daily.jobSiteName || "N/A"}</p>
+              <p><strong>Foreman:</strong> {daily.foremanName || "N/A"}</p>
+            </div>
+            <div className="text-right">
+              <p><strong>Crew Size:</strong> {daily.crewSize || "0"}</p>
+              <p>
+                <strong>Weather:</strong>{" "}
+                {daily.weather.length > 0
+                  ? daily.weather.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(", ")
+                  : "Not recorded"}
+                {daily.temperature ? ` · ${daily.temperature}°F` : ""}
+              </p>
+              <p><strong>Safety Items Checked:</strong> {dailySafetyChecked} / {SAFETY_CHECKLIST_ITEMS.length}</p>
+            </div>
+          </div>
+
+          <h3 className="text-xs font-bold uppercase pt-2">Work Performed</h3>
+          <table className="w-full text-left border border-gray-300">
+            <thead>
+              <tr className="bg-gray-100 border-b border-gray-300">
+                <th className="p-2">#</th>
+                <th className="p-2">Task</th>
+                <th className="p-2">Equipment</th>
+                <th className="p-2 text-right">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dailyWork.length === 0 ? (
+                <tr><td className="p-2" colSpan={4}>No work entries recorded.</td></tr>
+              ) : (
+                dailyWork.map((e, i) => (
+                  <tr key={e.id} className="border-b border-gray-200">
+                    <td className="p-2">{i + 1}</td>
+                    <td className="p-2 font-sans">{e.task}</td>
+                    <td className="p-2 font-sans">{e.equipment || "—"}</td>
+                    <td className="p-2 text-right">{(parseFloat(e.hours) || 0).toFixed(1)}</td>
+                  </tr>
+                ))
+              )}
+              <tr className="font-bold bg-gray-50">
+                <td className="p-2" colSpan={3}>Total Task Hours · Crew-Hours ({dailyCrew} crew)</td>
+                <td className="p-2 text-right">{dailyTaskHours.toFixed(1)} · {(dailyTaskHours * dailyCrew).toFixed(1)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 className="text-xs font-bold uppercase pt-2">Materials Received</h3>
+          <table className="w-full text-left border border-gray-300">
+            <thead>
+              <tr className="bg-gray-100 border-b border-gray-300">
+                <th className="p-2">#</th>
+                <th className="p-2">Material</th>
+                <th className="p-2 text-right">Quantity</th>
+                <th className="p-2">Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dailyMaterials.length === 0 ? (
+                <tr><td className="p-2" colSpan={4}>No materials recorded.</td></tr>
+              ) : (
+                dailyMaterials.map((e, i) => (
+                  <tr key={e.id} className="border-b border-gray-200">
+                    <td className="p-2">{i + 1}</td>
+                    <td className="p-2 font-sans">{e.material}</td>
+                    <td className="p-2 text-right">{e.quantity || "0"}</td>
+                    <td className="p-2">{e.unit}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+
+          <h3 className="text-xs font-bold uppercase pt-2">Safety Checklist</h3>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 border border-gray-300 p-3 font-sans">
+            {SAFETY_CHECKLIST_ITEMS.map((item) => (
+              <p key={item.id}>
+                <span className="font-mono">[{daily.safetyChecks[item.id] ? "X" : " "}]</span> {item.label}
+              </p>
+            ))}
+          </div>
+
+          {daily.reportNotes.trim() && (
+            <>
+              <h3 className="text-xs font-bold uppercase pt-2">Notes</h3>
+              <p className="border border-gray-300 p-3 font-sans whitespace-pre-wrap">{daily.reportNotes}</p>
+            </>
           )}
         </div>
       )}
