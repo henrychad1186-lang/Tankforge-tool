@@ -175,8 +175,8 @@ export function ExcavationProvider({ children, jobId = "default-job" }: { childr
   const sumpEntry = useMemo(() => {
     const raw = parseFloat(state.sumpEntryHeightIn ?? "");
     const entryHeightFt = isNaN(raw) || raw < 0 ? null : raw / 12;
-    return calcSumpEntry(slopeResults, pipeTrench, excResults.tankTopReading, entryHeightFt);
-  }, [slopeResults, pipeTrench, excResults.tankTopReading, state.sumpEntryHeightIn]);
+    return calcSumpEntry(slopeResults, pipeTrench, excResults.tankTopReading, entryHeightFt, excResults.trenchDepth);
+  }, [slopeResults, pipeTrench, excResults.tankTopReading, excResults.trenchDepth, state.sumpEntryHeightIn]);
 
   const value = useMemo(
     () => ({

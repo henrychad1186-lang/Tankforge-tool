@@ -130,3 +130,24 @@ body {
   border-color: #fbbf24 !important;
   font-weight: 700 !important;
 }
+
+/* Print only the submittal cut sheet: hide the app UI, keep the cut sheet's ancestor containers but strip their styling */
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  body *:not(.print-only):not(.print-only *):not(:has(.print-only)) {
+    display: none !important;
+  }
+
+  body *:has(.print-only) {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    box-shadow: none !important;
+  }
+}

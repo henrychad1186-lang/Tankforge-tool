@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { FRACTIONS, TANK_PRESETS, type SlopeStartMode } from '../lib/constants';
-import { formatFeetInches, SUMP_ENTRY_TOLERANCE_IN } from '../lib/calculations';
+import { formatFeetInches, formatOffsetIn, SUMP_ENTRY_TOLERANCE_IN } from '../lib/calculations';
 import { useExcavation } from '../lib/tab-contexts';
 
 function ExcavationTabComponent() {
@@ -518,19 +518,19 @@ function ExcavationTabComponent() {
                 <div className="font-bold">
                   {sumpEntry.status === "ok" && `✓ Pipe lands on sump entry (within ±${SUMP_ENTRY_TOLERANCE_IN}")`}
                   {sumpEntry.status === "low" &&
-                    `⚠ Pipe arrives ${sumpEntry.offsetIn.toFixed(1)}" BELOW sump entry — would have to rise into the sump (trap)`}
+                    `⚠ Pipe arrives ${formatOffsetIn(sumpEntry.offsetIn)}" BELOW sump entry — would have to rise into the sump (trap)`}
                   {sumpEntry.status === "high" &&
-                    `Pipe arrives ${Math.abs(sumpEntry.offsetIn).toFixed(1)}" ABOVE sump entry — needs more fall to reach it`}
+                    `Pipe arrives ${formatOffsetIn(sumpEntry.offsetIn)}" ABOVE sump entry — needs more fall to reach it`}
                 </div>
                 <div className="font-mono text-[10px] text-slate-300">
                   Entry centerline rod: {sumpEntry.entryCenterReading.toFixed(2)}&apos; · Pipe centerline at tank: {sumpEntry.pipeCenterAtTank.toFixed(2)}&apos;
                 </div>
-                {sumpEntry.status !== "ok" && sumpEntry.requiredHighPoint >= trenchDepth - 0.005 && (
+                {sumpEntry.status !== "ok" && !sumpEntry.requiredHighPointViolatesCover && (
                   <div className="font-mono text-[10px] text-slate-300">
                     Set trench high point to {formatFeetInches(sumpEntry.requiredHighPoint)} ({sumpEntry.requiredHighPoint.toFixed(2)}&apos;) to land centered at this run and pitch.
                   </div>
                 )}
-                {sumpEntry.status !== "ok" && sumpEntry.requiredHighPoint < trenchDepth - 0.005 && (
+                {sumpEntry.status !== "ok" && sumpEntry.requiredHighPointViolatesCover && (
                   <div className="font-mono text-[10px] text-red-300">
                     Landing centered needs a high point of {sumpEntry.requiredHighPoint.toFixed(2)}&apos;, shallower than minimum pipe cover ({trenchDepth.toFixed(2)}&apos;).
                     Shorten the run, reduce pitch, increase tank cover, or use a sump with a higher entry.

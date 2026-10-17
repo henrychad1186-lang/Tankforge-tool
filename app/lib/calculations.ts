@@ -109,6 +109,7 @@ export interface SlopeResults {
   slopeStartDecimal: number;
   totalSlopeFallInches: number;
   slopeEndDecimal: number;
+  runFeet: number;
 }
 
 export function calcSlope(
@@ -121,7 +122,7 @@ export function calcSlope(
   const slopeStartDecimal = slopeStartMode === "trench" ? trenchDepth : customSlopeStart;
   const totalSlopeFallInches = runFeet * slopeRateInchesPerFoot;
   const slopeEndDecimal = slopeStartDecimal + (totalSlopeFallInches / 12);
-  return { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal };
+  return { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal, runFeet };
 }
 
 /** Pipe centerline may land within this many inches of the sump entry centerline. */
@@ -138,7 +139,14 @@ export interface SumpEntryResults {
   offsetIn: number | null;
   /** Trench-bottom high point shot that lands the pipe centered on the entry */
   requiredHighPoint: number | null;
+  /** True when the corrective high point is shallower than minimum pipe cover (trench depth) */
+  requiredHighPointViolatesCover: boolean | null;
   status: SumpEntryStatus;
+}
+
+/** Sump offset magnitude for display (direction is stated in words); avoids "-0.00". */
+export function formatOffsetIn(offsetIn: number): string {
+  return Math.abs(offsetIn).toFixed(2);
 }
 
 /**
@@ -150,7 +158,8 @@ export function calcSumpEntry(
   slope: SlopeResults,
   pipe: PipeTrenchGeometry,
   tankTopReading: number,
-  entryHeightAboveTankFt: number | null
+  entryHeightAboveTankFt: number | null,
+  minTrenchDepth: number
 ): SumpEntryResults {
   const pipeCenterAtTank = slope.slopeEndDecimal - pipe.beddingFt - pipe.odFt / 2;
 
@@ -161,6 +170,7 @@ export function calcSumpEntry(
       entryCenterReading: null,
       offsetIn: null,
       requiredHighPoint: null,
+      requiredHighPointViolatesCover: null,
       status: pipeBottomAtTank > tankTopReading ? "belowTankTop" : "clear",
     };
   }
@@ -172,7 +182,9 @@ export function calcSumpEntry(
   const status: SumpEntryStatus =
     offsetIn > SUMP_ENTRY_TOLERANCE_IN ? "low" : offsetIn < -SUMP_ENTRY_TOLERANCE_IN ? "high" : "ok";
 
-  return { pipeCenterAtTank, entryCenterReading, offsetIn, requiredHighPoint, status };
+  const requiredHighPointViolatesCover = requiredHighPoint < minTrenchDepth - 0.005;
+
+  return { pipeCenterAtTank, entryCenterReading, offsetIn, requiredHighPoint, requiredHighPointViolatesCover, status };
 }
 
 // ─── UST Buoyancy Safety Factor Calculations ───────────────────────────────

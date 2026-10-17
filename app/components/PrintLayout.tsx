@@ -2,7 +2,7 @@
 "use client";
 
 import React, { memo } from "react";
-import { formatFeetInches } from "../lib/calculations";
+import { formatFeetInches, formatOffsetIn, SUMP_ENTRY_TOLERANCE_IN } from "../lib/calculations";
 import type { ActiveTab } from "../lib/constants";
 import { useExcavation, useConcrete, usePreBury, useBlueprints } from "../lib/tab-contexts";
 
@@ -11,7 +11,8 @@ interface PrintLayoutProps {
 }
 
 function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
-  const { transitShot, beddingDepth, tankDiameterFt, coverFt, excResults } = useExcavation();
+  const { state: excState, transitShot, beddingDepth, tankDiameterFt, coverFt, pipeTrench, excResults, slopeResults, sumpEntry } = useExcavation();
+  const { slopeStartDecimal, totalSlopeFallInches, slopeEndDecimal, runFeet } = slopeResults;
   const { tankHoleNoBedding, tankHoleWithBedding, tankTopReading, trenchDepth, pitDepthBelowFg, bedTopBelowFg, trenchBelowFg } = excResults;
 
   const { state: concreteState, concreteVolume, rebarResults, gravelResults, turnbuckleLayout, buoyancyResults } = useConcrete();
@@ -84,6 +85,61 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
               </tr>
             </tbody>
           </table>
+
+          <h2 className="text-sm font-bold border-b border-gray-400 pb-1 uppercase">Product / Vent Line Slope &amp; Sump Entry Check</h2>
+          <p className="text-[10px]">
+            Pipe cover {(pipeTrench.coverFt * 12).toFixed(1)}&quot; · Pipe OD {(pipeTrench.odFt * 12).toFixed(1)}&quot; · Bedding under pipe {(pipeTrench.beddingFt * 12).toFixed(1)}&quot; · Run {runFeet} ft @ {excState.slopeRateInchesPerFoot === "0.250" ? "1/4" : "1/8"}&quot;/ft · Total fall {totalSlopeFallInches.toFixed(2)}&quot;
+          </p>
+          <table className="w-full text-left border border-gray-300">
+            <tbody>
+              <tr className="border-b border-gray-200">
+                <td className="p-2 font-sans">Trench High Point Shot</td>
+                <td className="p-2">{formatFeetInches(slopeStartDecimal)}</td>
+                <td className="p-2">{slopeStartDecimal.toFixed(2)} ft</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="p-2 font-sans">Trench Low Point at Tank</td>
+                <td className="p-2">{formatFeetInches(slopeEndDecimal)}</td>
+                <td className="p-2">{slopeEndDecimal.toFixed(2)} ft</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="p-2 font-sans">Pipe Centerline at Tank</td>
+                <td className="p-2">{formatFeetInches(sumpEntry.pipeCenterAtTank)}</td>
+                <td className="p-2">{sumpEntry.pipeCenterAtTank.toFixed(2)} ft</td>
+              </tr>
+              {sumpEntry.entryCenterReading !== null && (
+                <tr className="border-b border-gray-200">
+                  <td className="p-2 font-sans">Sump Entry Centerline ({excState.sumpEntryHeightIn}&quot; above tank top)</td>
+                  <td className="p-2">{formatFeetInches(sumpEntry.entryCenterReading)}</td>
+                  <td className="p-2">{sumpEntry.entryCenterReading.toFixed(2)} ft</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div className="border border-gray-400 p-2 font-sans text-[11px] space-y-1">
+            {sumpEntry.status === "ok" && (
+              <p><strong>RESULT: PASS</strong> — pipe lands on sump entry within ±{SUMP_ENTRY_TOLERANCE_IN}&quot; (offset {formatOffsetIn(sumpEntry.offsetIn ?? 0)}&quot;).</p>
+            )}
+            {sumpEntry.status === "low" && (
+              <p><strong>RESULT: FAIL — PIPE LOW</strong> — pipe arrives {formatOffsetIn(sumpEntry.offsetIn ?? 0)}&quot; below sump entry and would have to rise into the sump (trap).</p>
+            )}
+            {sumpEntry.status === "high" && (
+              <p><strong>RESULT: ADJUST — PIPE HIGH</strong> — pipe arrives {formatOffsetIn(sumpEntry.offsetIn ?? 0)}&quot; above sump entry; more fall required.</p>
+            )}
+            {(sumpEntry.status === "low" || sumpEntry.status === "high") && sumpEntry.requiredHighPoint !== null && (
+              !sumpEntry.requiredHighPointViolatesCover ? (
+                <p>Corrective high point shot to land centered: {formatFeetInches(sumpEntry.requiredHighPoint)} ({sumpEntry.requiredHighPoint.toFixed(2)} ft).</p>
+              ) : (
+                <p>Landing centered requires a high point of {sumpEntry.requiredHighPoint.toFixed(2)} ft, shallower than minimum pipe cover ({trenchDepth.toFixed(2)} ft). Shorten run, reduce pitch, increase tank cover, or use a sump with a higher entry.</p>
+              )
+            )}
+            {sumpEntry.status === "belowTankTop" && (
+              <p><strong>RESULT: FAIL</strong> — pipe bottom at tank end ({(slopeEndDecimal - pipeTrench.beddingFt).toFixed(2)} ft) is deeper than top of tank ({tankTopReading.toFixed(2)} ft). Sump entry height not entered.</p>
+            )}
+            {sumpEntry.status === "clear" && (
+              <p><strong>Sump entry height not entered</strong> — only checked that pipe clears top of tank (OK). Enter entry height from the sump submittal for a full check.</p>
+            )}
+          </div>
         </div>
       )}
 
