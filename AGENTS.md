@@ -24,7 +24,7 @@ We have implemented all 5 field-readiness upgrades to transform **UST Field Hub*
 
 ## 3. Photo Attachment with Field Compression (`PhotoGallery.tsx`)
 - **Direct Mobile Camera Access:** Uses `<input type="file" capture="environment" accept="image/*">` to launch the device's rear camera directly in the field.
-- **On-Device Canvas Compression:** Downscales high-resolution camera photos (4–10 MB) to max 1024px width/height at 0.72 JPEG quality (~70–120 KB), preventing `localStorage` quotas from filling up while keeping dial numbers, pipe stamps, and holiday test sparks crisp.
+- **On-Device Canvas Compression:** Downscales high-resolution camera photos (4–10 MB) to max 1024px width/height at 0.72 JPEG quality (~70–120 KB), keeping dial numbers, pipe stamps, and holiday test sparks crisp. Image data is stored in IndexedDB (`lib/photo-db.ts`, keyed by job + photo id); only photo metadata lives in the job's localStorage state. Legacy inline photos migrate automatically; Copy/Delete Job and Backup & Sync (`photos[]` in v2.1 backups) include the image data.
 - **Pre-Bury Categorization:** Filter and organize photos by `Overburden & Grade`, `Anchor Straps & Deadmen`, `Piping Fall & Slope`, `Drop Tube & Riser`, `Gauge & Pressure Test`, or `General Site`.
 - **Lightbox Preview & Captions:** Full-screen zoom modal with inline editable captions and timestamps.
 - **PDF Print Integration:** Captured photos embed directly into the print-ready inspection report.

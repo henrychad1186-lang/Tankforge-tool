@@ -228,7 +228,7 @@ function PrintLayoutComponent({ activeTab }: PrintLayoutProps) {
                 {preBury.state.photos.slice(0, 8).map((p) => (
                   <div key={p.id} className="border border-gray-300 p-1 rounded bg-gray-50 text-[9px]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.dataUrl} alt={p.caption} className="w-full h-20 object-cover rounded" />
+                    <img src={preBury.photoUrls[p.id] ?? p.dataUrl} alt={p.caption} className="w-full h-20 object-cover rounded" />
                     <p className="font-bold truncate mt-1">{p.caption}</p>
                     <p className="text-gray-500 font-mono">{p.timestamp}</p>
                   </div>

@@ -4,6 +4,7 @@
 import React, { useState, useRef } from "react";
 import { P } from "../lib/tab-contexts";
 import { getUnsavedEntries } from "../hooks/usePersistedState";
+import { getAllPhotos, savePhotos, clearAllPhotos, type StoredPhoto } from "../lib/photo-db";
 
 interface Job {
   id: string;
@@ -59,6 +60,8 @@ interface BackupPayload {
   jobList: Job[];
   activeJobId: string;
   records: Record<string, unknown>;
+  /** Pre-Bury photo image data from IndexedDB (v2.1+). Older backups carry photos inline in records. */
+  photos?: StoredPhoto[];
 }
 
 export default function BackupSyncModal({
@@ -77,18 +80,19 @@ export default function BackupSyncModal({
   if (!isOpen) return null;
 
   // Export all localStorage records scoped under UST app prefix
-  const handleExportJson = () => {
-    try {
-      const records = collectBackupRecords();
+  const buildPayload = async (): Promise<BackupPayload> => ({
+    app: "UST Field Hub",
+    version: "2.1.0",
+    exportedAt: new Date().toISOString(),
+    jobList,
+    activeJobId,
+    records: collectBackupRecords(),
+    photos: await getAllPhotos(),
+  });
 
-      const payload: BackupPayload = {
-        app: "UST Field Hub",
-        version: "2.0.0",
-        exportedAt: new Date().toISOString(),
-        jobList,
-        activeJobId,
-        records,
-      };
+  const handleExportJson = async () => {
+    try {
+      const payload = await buildPayload();
 
       const jsonStr = JSON.stringify(payload, null, 2);
       const blob = new Blob([jsonStr], { type: "application/json" });
@@ -107,18 +111,9 @@ export default function BackupSyncModal({
     }
   };
 
-  const handleCopyClipboard = () => {
+  const handleCopyClipboard = async () => {
     try {
-      const records = collectBackupRecords();
-
-      const payload: BackupPayload = {
-        app: "UST Field Hub",
-        version: "2.0.0",
-        exportedAt: new Date().toISOString(),
-        jobList,
-        activeJobId,
-        records,
-      };
+      const payload = await buildPayload();
 
       navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(() => {
         triggerToast("Copied full backup JSON to clipboard!");
@@ -131,7 +126,7 @@ export default function BackupSyncModal({
     }
   };
 
-  const applyImportData = (parsed: BackupPayload) => {
+  const applyImportData = async (parsed: BackupPayload) => {
     if (!parsed || parsed.app !== "UST Field Hub" || !parsed.records) {
       triggerToast("Invalid UST Hub backup file format.");
       return;
@@ -173,6 +168,15 @@ export default function BackupSyncModal({
             localStorage.setItem("ust-hub-activeJobId", JSON.stringify(parsed.activeJobId));
           }
         }
+      }
+
+      // Photo image data lives in IndexedDB; finish writing it before the page reloads
+      try {
+        if (importMode === "replace") await clearAllPhotos();
+        if (Array.isArray(parsed.photos)) await savePhotos(parsed.photos);
+      } catch (err) {
+        console.error("Photo restore error:", err);
+        triggerToast("Data restored, but photos could not be written to device storage.");
       }
 
       triggerToast(`Successfully restored ${Object.keys(parsed.records).length} data keys!`);
