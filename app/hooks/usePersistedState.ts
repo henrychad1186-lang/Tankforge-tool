@@ -29,12 +29,37 @@ function writeRaw(key: string, raw: string) {
   try {
     localStorage.setItem(key, raw);
     unsavedValues.delete(key);
+    retryUnsaved();
   } catch {
     // Storage full or unavailable — keep the value in memory for this session
     unsavedValues.set(key, raw);
   }
   listeners.get(key)?.forEach((notify) => notify());
   if (unsavedValues.size !== unsavedBefore) unsavedListeners.forEach((notify) => notify());
+}
+
+/**
+ * A write just succeeded, so space may have been freed (e.g. photos deleted):
+ * try to save values held in memory. The stored value equals the in-memory one,
+ * so readers see no change.
+ */
+function retryUnsaved() {
+  for (const [key, raw] of unsavedValues) {
+    try {
+      localStorage.setItem(key, raw);
+      unsavedValues.delete(key);
+    } catch {
+      // Still no room for this one
+    }
+  }
+}
+
+/** Drop a key's in-memory value, e.g. when its job is deleted, so a retry can't write it back. */
+export function discardUnsaved(key: string) {
+  if (unsavedValues.delete(key)) {
+    listeners.get(key)?.forEach((notify) => notify());
+    unsavedListeners.forEach((notify) => notify());
+  }
 }
 
 /** Values held only in memory because their storage write failed, as [key, raw JSON] pairs. */
