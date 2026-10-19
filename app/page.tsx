@@ -25,7 +25,7 @@ import FieldToolsDrawer from "./components/FieldToolsDrawer";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 
 // Contexts & Hooks
-import { usePersistedState, useUnsavedStorageCount } from "./hooks/usePersistedState";
+import { usePersistedState, useUnsavedStorageCount, discardUnsaved } from "./hooks/usePersistedState";
 import { copyJobPhotos, deleteJobPhotos } from "./lib/photo-db";
 import { copyBlueprintFile, deleteBlueprintFiles } from "./lib/blueprint-db";
 import type { BlueprintState } from "./lib/tab-types";
@@ -159,6 +159,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     deleteBlueprintFiles(bpSheets.map((s) => s.storageKey)).catch(() => {});
     JOB_TAB_KEYS.forEach((tab) => {
       localStorage.removeItem(`${P_V2}${id}-${tab}`);
+      discardUnsaved(`${P_V2}${id}-${tab}`);
     });
     deleteJobPhotos(id).catch(() => {});
 
