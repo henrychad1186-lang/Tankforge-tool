@@ -25,7 +25,7 @@ import FieldToolsDrawer from "./components/FieldToolsDrawer";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 
 // Contexts & Hooks
-import { usePersistedState, useUnsavedStorageCount } from "./hooks/usePersistedState";
+import { usePersistedState, useUnsavedStorageCount, discardUnsaved } from "./hooks/usePersistedState";
 import { copyJobPhotos, deleteJobPhotos } from "./lib/photo-db";
 import {
   AppStateProviders,
@@ -127,6 +127,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     const tabKeys = ["excavation", "droptube", "concrete", "construction", "dailyreport", "prebury"];
     tabKeys.forEach((tab) => {
       localStorage.removeItem(`${P_V2}${id}-${tab}`);
+      discardUnsaved(`${P_V2}${id}-${tab}`);
     });
     deleteJobPhotos(id).catch(() => {});
 
