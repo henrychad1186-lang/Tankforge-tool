@@ -26,6 +26,7 @@ import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 
 // Contexts & Hooks
 import { usePersistedState, useUnsavedStorageCount, discardUnsaved } from "./hooks/usePersistedState";
+import { copyJobPhotos, deleteJobPhotos } from "./lib/photo-db";
 import {
   AppStateProviders,
   useExcavation,
@@ -97,7 +98,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     return newJob.id;
   }, [setJobList, setActiveJobId]);
 
-  const handleCloneJob = useCallback((sourceId: string, newName: string) => {
+  const handleCloneJob = useCallback(async (sourceId: string, newName: string) => {
     const newId = `job-${Date.now()}`;
     const newJob: Job = {
       id: newId,
@@ -114,6 +115,8 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
         localStorage.setItem(`${P_V2}${newId}-${tab}`, val);
       }
     });
+    // Copy photo image data before switching so the new job's gallery loads complete
+    await copyJobPhotos(sourceId, newId).catch(() => {});
 
     setJobList((prev) => [...prev, newJob]);
     setActiveJobId(newId);
@@ -126,6 +129,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
       localStorage.removeItem(`${P_V2}${id}-${tab}`);
       discardUnsaved(`${P_V2}${id}-${tab}`);
     });
+    deleteJobPhotos(id).catch(() => {});
 
     setJobList((prev) => prev.filter((j) => j.id !== id));
     if (activeJobId === id) {

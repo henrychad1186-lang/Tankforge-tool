@@ -1,8 +1,14 @@
 // encoding: utf-8
 "use client";
 
-import React, { createContext, useContext, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useMemo, useCallback, useEffect, useState } from "react";
 import { usePersistedState } from "../hooks/usePersistedState";
+import {
+  savePhotos,
+  deletePhoto as deleteStoredPhoto,
+  getJobPhotos,
+  deleteJobPhotos,
+} from "./photo-db";
 import {
   ExcavationState,
   DEFAULT_EXCAVATION_STATE,
@@ -17,6 +23,7 @@ import {
   PreBuryState,
   DEFAULT_PREBURY_STATE,
   PreBuryPhoto,
+  NewPreBuryPhoto,
   PreBurySignOff,
   DEFAULT_PREBURY_SIGNOFF,
   BlueprintState,
@@ -685,7 +692,9 @@ interface PreBuryContextType {
   addAirTest: (test: Omit<AirTestRecord, "id" | "recordedAt">) => void;
   updateAirTest: (id: string, updates: Partial<AirTestRecord>) => void;
   deleteAirTest: (id: string) => void;
-  addPhoto: (photo: Omit<PreBuryPhoto, "id" | "timestamp">) => void;
+  addPhoto: (photo: NewPreBuryPhoto) => void;
+  /** Image data URL per photo id (from IndexedDB, or inline for legacy photos) */
+  photoUrls: Record<string, string>;
   deletePhoto: (id: string) => void;
   updatePhotoCaption: (id: string, caption: string) => void;
   setSignOff: (signOffUpdates: Partial<PreBurySignOff>) => void;
@@ -711,9 +720,63 @@ export function PreBuryProvider({ children, jobId = "default-job" }: { children:
     setState((prev) => ({ ...prev, ...updates }));
   }, [setState]);
 
+  // ─── Photo image data (IndexedDB) ───
+  const [storedPhotoUrls, setStoredPhotoUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    getJobPhotos(jobId)
+      .then((stored) => {
+        if (cancelled) return;
+        setStoredPhotoUrls((prev) => ({ ...Object.fromEntries(stored.map((p) => [p.id, p.dataUrl])), ...prev }));
+      })
+      .catch(() => {
+        // IndexedDB unavailable — inline dataUrls (if any) still render
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId]);
+
+  // Move inline image data (legacy saves, restored old backups) into IndexedDB, then drop it from localStorage
+  const inlinePhotoIds = (state.photos || []).filter((p) => p.dataUrl).map((p) => p.id).join(",");
+  useEffect(() => {
+    if (!inlinePhotoIds) return;
+    const inline = (state.photos || []).filter((p): p is PreBuryPhoto & { dataUrl: string } => !!p.dataUrl);
+    savePhotos(inline.map((p) => ({ jobId, id: p.id, dataUrl: p.dataUrl })))
+      .then(() => {
+        const moved = new Set(inline.map((p) => p.id));
+        setStoredPhotoUrls((prev) => ({ ...prev, ...Object.fromEntries(inline.map((p) => [p.id, p.dataUrl])) }));
+        setState((prev) => ({
+          ...prev,
+          photos: (prev.photos || []).map((p) => {
+            if (!moved.has(p.id) || !p.dataUrl) return p;
+            const { dataUrl: _moved, ...meta } = p;
+            void _moved;
+            return meta;
+          }),
+        }));
+      })
+      .catch(() => {
+        // Keep inline data; retried when the photo list changes
+      });
+    // state.photos is read only for the ids in inlinePhotoIds
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlinePhotoIds, jobId, setState]);
+
+  const photoUrls = useMemo(() => {
+    const urls: Record<string, string> = { ...storedPhotoUrls };
+    (state.photos || []).forEach((p) => {
+      if (p.dataUrl) urls[p.id] = p.dataUrl;
+    });
+    return urls;
+  }, [storedPhotoUrls, state.photos]);
+
   const resetState = useCallback(() => {
     setState(DEFAULT_PREBURY_STATE);
-  }, [setState]);
+    setStoredPhotoUrls({});
+    deleteJobPhotos(jobId).catch(() => {});
+  }, [setState, jobId]);
 
   const toggleCheck = useCallback((id: string) => {
     setState((prev) => ({
@@ -771,9 +834,10 @@ export function PreBuryProvider({ children, jobId = "default-job" }: { children:
     }));
   }, [setState]);
 
-  const addPhoto = useCallback((photo: Omit<PreBuryPhoto, "id" | "timestamp">) => {
+  const addPhoto = useCallback((photo: NewPreBuryPhoto) => {
+    const { dataUrl, ...meta } = photo;
     const newPhoto: PreBuryPhoto = {
-      ...photo,
+      ...meta,
       id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: new Date().toLocaleString("en-US", {
         month: "short",
@@ -783,18 +847,30 @@ export function PreBuryProvider({ children, jobId = "default-job" }: { children:
         minute: "2-digit",
       }),
     };
-    setState((prev) => ({
-      ...prev,
-      photos: [...(prev.photos || []), newPhoto],
-    }));
-  }, [setState]);
+    const append = (p: PreBuryPhoto) => setState((prev) => ({ ...prev, photos: [...(prev.photos || []), p] }));
+    savePhotos([{ jobId, id: newPhoto.id, dataUrl }])
+      .then(() => {
+        setStoredPhotoUrls((prev) => ({ ...prev, [newPhoto.id]: dataUrl }));
+        append(newPhoto);
+      })
+      .catch(() => {
+        // IndexedDB unavailable — fall back to storing the image inline
+        append({ ...newPhoto, dataUrl });
+      });
+  }, [setState, jobId]);
 
   const deletePhoto = useCallback((id: string) => {
     setState((prev) => ({
       ...prev,
       photos: (prev.photos || []).filter((p) => p.id !== id),
     }));
-  }, [setState]);
+    setStoredPhotoUrls((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    deleteStoredPhoto(jobId, id).catch(() => {});
+  }, [setState, jobId]);
 
   const updatePhotoCaption = useCallback((id: string, caption: string) => {
     setState((prev) => ({
@@ -861,6 +937,7 @@ export function PreBuryProvider({ children, jobId = "default-job" }: { children:
       updateAirTest,
       deleteAirTest,
       addPhoto,
+      photoUrls,
       deletePhoto,
       updatePhotoCaption,
       setSignOff,
@@ -884,6 +961,7 @@ export function PreBuryProvider({ children, jobId = "default-job" }: { children:
       updateAirTest,
       deleteAirTest,
       addPhoto,
+      photoUrls,
       deletePhoto,
       updatePhotoCaption,
       setSignOff,
