@@ -294,9 +294,16 @@ export interface PreBuryPhoto {
   id: string;
   category: PhotoCategory;
   caption: string;
-  dataUrl: string;
+  /**
+   * Image data. Normally kept in IndexedDB (lib/photo-db.ts) and absent here; only
+   * present for legacy/restored photos awaiting migration or when IndexedDB is unavailable.
+   */
+  dataUrl?: string;
   timestamp: string;
 }
+
+/** A photo being added: metadata plus the compressed image data. */
+export type NewPreBuryPhoto = Omit<PreBuryPhoto, "id" | "timestamp" | "dataUrl"> & { dataUrl: string };
 
 export interface PreBurySignOff {
   inspectorName: string;

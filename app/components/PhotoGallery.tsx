@@ -2,11 +2,11 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { PreBuryPhoto, PhotoCategory } from "../lib/tab-types";
+import { PreBuryPhoto, PhotoCategory, NewPreBuryPhoto } from "../lib/tab-types";
 
 interface PhotoGalleryProps {
   photos: PreBuryPhoto[];
-  onAddPhoto: (photo: Omit<PreBuryPhoto, "id" | "timestamp">) => void;
+  onAddPhoto: (photo: NewPreBuryPhoto) => void;
   onDeletePhoto: (id: string) => void;
   onUpdateCaption: (id: string, caption: string) => void;
   triggerToast?: (msg: string) => void;
@@ -145,6 +145,7 @@ export default function PhotoGallery({
   };
 
   const handleDownload = (photo: PreBuryPhoto) => {
+    if (!photo.dataUrl) return;
     const a = document.createElement("a");
     a.href = photo.dataUrl;
     a.download = `ust-inspection-${photo.category}-${Date.now()}.jpg`;

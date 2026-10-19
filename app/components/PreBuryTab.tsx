@@ -13,6 +13,7 @@ import {
 import {
   PreBurySubTab,
   PreBuryPhoto,
+  NewPreBuryPhoto,
   PreBurySignOff,
   DEFAULT_PREBURY_SIGNOFF,
 } from "../lib/tab-types";
@@ -34,6 +35,7 @@ function PreBuryTabComponent({ triggerToast }: PreBuryTabProps) {
     updateAirTest,
     deleteAirTest,
     addPhoto,
+    photoUrls,
     deletePhoto,
     updatePhotoCaption,
     setSignOff,
@@ -76,7 +78,7 @@ function PreBuryTabComponent({ triggerToast }: PreBuryTabProps) {
   }, [clearSignOff, updateState]);
 
   const safeAddPhoto = useCallback(
-    (photo: Omit<PreBuryPhoto, "id" | "timestamp">) => {
+    (photo: NewPreBuryPhoto) => {
       if (typeof addPhoto === "function") {
         addPhoto(photo);
       } else {
@@ -923,7 +925,7 @@ function PreBuryTabComponent({ triggerToast }: PreBuryTabProps) {
       {/* ── SUB-TAB 6: PHOTO EVIDENCE ── */}
       {activeSubTab === "photos" && (
         <PhotoGallery
-          photos={state.photos || []}
+          photos={(state.photos || []).map((p) => ({ ...p, dataUrl: photoUrls[p.id] ?? p.dataUrl }))}
           onAddPhoto={safeAddPhoto}
           onDeletePhoto={safeDeletePhoto}
           onUpdateCaption={safeUpdatePhotoCaption}
