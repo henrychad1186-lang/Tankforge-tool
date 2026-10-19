@@ -5,6 +5,12 @@ import React, { useState, useRef } from "react";
 import { P } from "../lib/tab-contexts";
 import { getUnsavedEntries } from "../hooks/usePersistedState";
 import { getAllPhotos, savePhotos, clearAllPhotos, type StoredPhoto } from "../lib/photo-db";
+import {
+  getBlueprintFiles,
+  saveBlueprintFiles,
+  clearBlueprintFiles,
+  type StoredBlueprintFile,
+} from "../lib/blueprint-db";
 
 interface Job {
   id: string;
@@ -62,6 +68,21 @@ interface BackupPayload {
   records: Record<string, unknown>;
   /** Pre-Bury photo image data from IndexedDB (v2.1+). Older backups carry photos inline in records. */
   photos?: StoredPhoto[];
+  /** Blueprint plan files from IndexedDB referenced by any job's sheets (v2.2+) */
+  blueprints?: StoredBlueprintFile[];
+}
+
+/** Storage keys of every blueprint sheet referenced in the given records' blueprint tab states. */
+function referencedBlueprintKeys(records: Record<string, unknown>): string[] {
+  const keys = new Set<string>();
+  Object.entries(records).forEach(([key, val]) => {
+    if (!key.endsWith("-blueprints")) return;
+    const sheets = (val as { sheets?: { storageKey?: string }[] } | null)?.sheets;
+    sheets?.forEach((sheet) => {
+      if (sheet?.storageKey) keys.add(sheet.storageKey);
+    });
+  });
+  return [...keys];
 }
 
 export default function BackupSyncModal({
@@ -80,15 +101,19 @@ export default function BackupSyncModal({
   if (!isOpen) return null;
 
   // Export all localStorage records scoped under UST app prefix
-  const buildPayload = async (): Promise<BackupPayload> => ({
-    app: "UST Field Hub",
-    version: "2.1.0",
-    exportedAt: new Date().toISOString(),
-    jobList,
-    activeJobId,
-    records: collectBackupRecords(),
-    photos: await getAllPhotos(),
-  });
+  const buildPayload = async (): Promise<BackupPayload> => {
+    const records = collectBackupRecords();
+    return {
+      app: "UST Field Hub",
+      version: "2.2.0",
+      exportedAt: new Date().toISOString(),
+      jobList,
+      activeJobId,
+      records,
+      photos: await getAllPhotos(),
+      blueprints: await getBlueprintFiles(referencedBlueprintKeys(records)),
+    };
+  };
 
   const handleExportJson = async () => {
     try {
@@ -170,13 +195,20 @@ export default function BackupSyncModal({
         }
       }
 
-      // Photo image data lives in IndexedDB; finish writing it before the page reloads
+      // Photos and blueprint files live in IndexedDB; finish writing them before the page reloads
       try {
         if (importMode === "replace") await clearAllPhotos();
         if (Array.isArray(parsed.photos)) await savePhotos(parsed.photos);
       } catch (err) {
         console.error("Photo restore error:", err);
         triggerToast("Data restored, but photos could not be written to device storage.");
+      }
+      try {
+        if (importMode === "replace") await clearBlueprintFiles();
+        if (Array.isArray(parsed.blueprints)) await saveBlueprintFiles(parsed.blueprints);
+      } catch (err) {
+        console.error("Blueprint restore error:", err);
+        triggerToast("Data restored, but blueprint files could not be written to device storage.");
       }
 
       triggerToast(`Successfully restored ${Object.keys(parsed.records).length} data keys!`);

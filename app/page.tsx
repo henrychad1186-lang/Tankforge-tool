@@ -27,6 +27,8 @@ import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 // Contexts & Hooks
 import { usePersistedState, useUnsavedStorageCount } from "./hooks/usePersistedState";
 import { copyJobPhotos, deleteJobPhotos } from "./lib/photo-db";
+import { copyBlueprintFile, deleteBlueprintFiles } from "./lib/blueprint-db";
+import type { BlueprintState } from "./lib/tab-types";
 import {
   AppStateProviders,
   useExcavation,
@@ -40,6 +42,18 @@ import {
 } from "./lib/tab-contexts";
 
 const P = "ust-hub-";
+
+/** Per-job localStorage tab keys (`ust-hub-v2-<jobId>-<tab>`) */
+const JOB_TAB_KEYS = ["excavation", "droptube", "concrete", "construction", "dailyreport", "prebury", "blueprints"];
+
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
 
 interface Job {
   id: string;
@@ -107,8 +121,7 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     };
 
     // Duplicate all scoped tab keys for the new job
-    const tabKeys = ["excavation", "droptube", "concrete", "construction", "dailyreport", "prebury"];
-    tabKeys.forEach((tab) => {
+    JOB_TAB_KEYS.forEach((tab) => {
       const sourceKey = `${P_V2}${sourceId}-${tab}`;
       const val = localStorage.getItem(sourceKey);
       if (val !== null) {
@@ -118,14 +131,33 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
     // Copy photo image data before switching so the new job's gallery loads complete
     await copyJobPhotos(sourceId, newId).catch(() => {});
 
+    // Give the copy its own blueprint files, so deleting a sheet in one job can't remove it from the other
+    const bpKey = `${P_V2}${newId}-blueprints`;
+    const bpState = readJson<BlueprintState>(bpKey);
+    if (bpState?.sheets?.length) {
+      const sheets = await Promise.all(
+        bpState.sheets.map(async (sheet) => {
+          const newKey = `bp-${newId}-${sheet.id}`;
+          const copied = await copyBlueprintFile(sheet.storageKey, newKey, newId).catch(() => false);
+          return copied ? { ...sheet, storageKey: newKey } : sheet;
+        })
+      );
+      try {
+        localStorage.setItem(bpKey, JSON.stringify({ ...bpState, sheets }));
+      } catch {
+        // Storage full — the copy keeps the source's file keys
+      }
+    }
+
     setJobList((prev) => [...prev, newJob]);
     setActiveJobId(newId);
   }, [setJobList, setActiveJobId]);
 
   const handleDeleteJob = useCallback((id: string) => {
-    // Clean up all scoped tab keys from localStorage
-    const tabKeys = ["excavation", "droptube", "concrete", "construction", "dailyreport", "prebury"];
-    tabKeys.forEach((tab) => {
+    // Remove the job's blueprint files, then all scoped tab keys from localStorage
+    const bpSheets = readJson<BlueprintState>(`${P_V2}${id}-blueprints`)?.sheets ?? [];
+    deleteBlueprintFiles(bpSheets.map((s) => s.storageKey)).catch(() => {});
+    JOB_TAB_KEYS.forEach((tab) => {
       localStorage.removeItem(`${P_V2}${id}-${tab}`);
     });
     deleteJobPhotos(id).catch(() => {});

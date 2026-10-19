@@ -9,6 +9,7 @@ import {
   getJobPhotos,
   deleteJobPhotos,
 } from "./photo-db";
+import { deleteBlueprintFiles } from "./blueprint-db";
 import {
   ExcavationState,
   DEFAULT_EXCAVATION_STATE,
@@ -1016,8 +1017,9 @@ export function BlueprintProvider({ children, jobId = "default-job" }: { childre
   }, [setState]);
 
   const resetState = useCallback(() => {
+    deleteBlueprintFiles((state.sheets || []).map((s) => s.storageKey)).catch(() => {});
     setState(DEFAULT_BLUEPRINT_STATE);
-  }, [setState]);
+  }, [setState, state.sheets]);
 
   const addSheet = useCallback((sheet: BlueprintSheet) => {
     setState((prev) => ({
