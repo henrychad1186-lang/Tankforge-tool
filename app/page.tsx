@@ -513,7 +513,8 @@ function MainAppContent({ jobList, setJobList, activeJobId, setActiveJobId }: Ma
                 <p className="mt-0.5">
                   {unsavedStorageCount} {unsavedStorageCount === 1 ? "section has" : "sections have"} changes held only in memory.
                   They will be lost if you reload or close the app. Download a backup now (it includes these changes),
-                  then free space by deleting photos or old jobs.
+                  then delete old jobs you no longer need. Saving resumes on its own once there&apos;s room. Photos and
+                  blueprints are stored separately and don&apos;t fill this space.
                 </p>
               </div>
               <button
