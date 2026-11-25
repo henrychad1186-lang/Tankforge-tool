@@ -27,6 +27,10 @@ interface BackupSyncModalProps {
   onRestoreComplete: () => void;
 }
 
+/** Storage keys page.tsx reads the job list and active job from (usePersistedState with prefix P). */
+const JOB_LIST_KEY = `${P}jobList`;
+const ACTIVE_JOB_KEY = `${P}activeJobId`;
+
 /** Keys written with plain localStorage.setItem (not JSON); everything else is JSON from usePersistedState. */
 const RAW_TEXT_KEYS = new Set(["ust-hub-gemini-key"]);
 
@@ -170,13 +174,14 @@ export default function BackupSyncModal({
         keysToRemove.forEach((k) => localStorage.removeItem(k));
       }
 
-      // Write imported records. Merge keeps this device's active job.
+      // Write imported records. Merge keeps this device's active job and job list
+      // (the job list is merged below instead of overwritten by the backup's copy).
       Object.entries(parsed.records).forEach(([key, val]) => {
-        if (importMode === "merge" && key === "ust-hub-activeJobId") return;
+        if (importMode === "merge" && (key === ACTIVE_JOB_KEY || key === JOB_LIST_KEY)) return;
         localStorage.setItem(key, toStoredValue(key, val));
       });
 
-      // Update or merge jobList
+      // Update or merge jobList, under the same keys page.tsx reads
       if (parsed.jobList && Array.isArray(parsed.jobList)) {
         if (importMode === "merge") {
           const existingIds = new Set(jobList.map((j) => j.id));
@@ -186,11 +191,11 @@ export default function BackupSyncModal({
               combined.push(j);
             }
           });
-          localStorage.setItem("ust-hub-jobList", JSON.stringify(combined));
+          localStorage.setItem(JOB_LIST_KEY, JSON.stringify(combined));
         } else {
-          localStorage.setItem("ust-hub-jobList", JSON.stringify(parsed.jobList));
+          localStorage.setItem(JOB_LIST_KEY, JSON.stringify(parsed.jobList));
           if (parsed.activeJobId) {
-            localStorage.setItem("ust-hub-activeJobId", JSON.stringify(parsed.activeJobId));
+            localStorage.setItem(ACTIVE_JOB_KEY, JSON.stringify(parsed.activeJobId));
           }
         }
       }
